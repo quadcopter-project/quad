@@ -4,9 +4,14 @@ null value return on disconnect state is scrapped. It now assumes that device is
 """
 
 import serial, json, os, time
+import serial.tools.list_ports
+import numpy as np
+
 from dataclasses import dataclass, field, asdict
 from threading import Thread
-import serial.tools.list_ports
+from numpy import array
+from numpy.linalg import norm
+
 
 @dataclass
 class ArdReading:
@@ -36,7 +41,6 @@ class ArdManager:
             self.arduinos[ard.dev_id] = ard 
 
         self.arduinos = dict(sorted(self.arduinos.items()))
-        print(self.arduinos)
 
         # this is for the workers to be properly initialised.
         time.sleep(2)
@@ -57,11 +61,12 @@ class ArdManager:
             
             for comp, values in asdict(reading).items():
                 comp_map = getattr(mapping, comp)
-                print(comp_map)
-                comp_map.extend([ (dev_id, comp_id) for comp_id in range(len(values)) ])
+                # would have used tuples but json parses them to lists, so use lists for consistency.
+                comp_map.extend([ [dev_id, comp_id] for comp_id in range(len(values)) ])
 
         self.mapping = mapping
 
+    # adjust mapping of load cells & motors
     def customise_mapping(self):
         old_mapping = self.mapping
         new_mapping = self.ArdMapping()
@@ -80,7 +85,7 @@ class ArdManager:
             new_id = ''
             while True:
                 input(f'Motor {i} will now move 90 degrees. Confirm: ')
-                self.arduinos[dev_id].move_motor(motor_id, 90)
+                self.arduinos[dev_id].move(motor_id, 90)
                 new_id = input('Assign new id to this motor: ')
                 if not new_id.isnumeric():
                     print('Invalid input.')
@@ -128,16 +133,24 @@ class ArdManager:
 
         return reading
 
+    # backwards compatible
+    def get_mass(self) -> list:
+        return self.get_reading().mass
+
+    # NOTE: returns numpy array for easier geometric manipulation. 
+    def get_accel(self, accel_id: int) -> array:
+        return array(self.get_reading().accel[accel_id])
+
     # angle: list of angles to move for each motor.
     # TODO: use AccelStepper on Arduino and has it report motor moving status, so we can move multiple motors simultaneously
-    def move_motor(self, target: list, block:bool = True):
+    def move(self, target: list, block:bool = True):
         motor_num = len(self.mapping.motor)
         if len(target) != motor_num:
-            raise Exception('(E) ArdManager::move_motor: target list does not match number of motors.')
+            raise Exception('(E) ArdManager::move: target list does not match number of motors.')
 
         for i in range(motor_num):
             dev_id, comp_id = self.mapping.motor[i]
-            self.arduinos[dev_id].move_motor(comp_id, target[i])
+            self.arduinos[dev_id].move(comp_id, target[i])
 
         if block:
             while True:
@@ -145,6 +158,59 @@ class ArdManager:
                 if True not in reading.motor:
                     break
                 time.sleep(0.5)
+
+    # TODO: since non-block is not safe, consider just removing it?
+    def move_motor(motor_id: int, target: float, block = True):
+        # TODO: define get_motor_num function
+        motor_num = len(self.mapping.motor)
+        target = [0 if i != motor_id else target for i in range(motor_num)]
+        self.move(target, block)
+
+    # accel_id: mapped id of accelerometer device to use.
+    # we are forced into this python control script, since a single arduino won't have 
+    # enough pins to control all motors and read from accelerometer at the same time.
+    def level(self, accel_id: int = 0):
+        # TODO: tune these parameters
+        SCHEME1_THRESHOLD = 8.5     # z-axis accel below which we use scheme 1.
+        D_THETA = 1.8 * 3   # small angle to move by
+        X = array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])   # unit vectors: X[0, 1, 2] respectively.
+        while True:
+            # a -> acceleration as in physics.
+            # it has components in x, y and z unit vectors respectively.
+            a0 = self.get_accel(accel_id) 
+            target_a = norm(a0) * X[2]    # final a will have all its lengths on z
+            motor_num = len(self.mapping.motor)
+            
+            # TODO: use norm of diff_a for threshold instead, and
+            # TODO: implement break condition from while loop
+            # use scheme 1
+            if (a0 @ X[2] < SCHEME1_THRESHOLD):
+                drvs = list() # derivatives d(a) / d(theta)
+                for motor_id in range(motor_num):
+                    move(motor_id, D_THETA)
+                    a1 = self.get_accel(accel_id)
+                    drvs.append((a1 - a0) / D_THETA)
+                    self.move(motor_id, -D_THETA)
+                # TODO: worth checking if the value of a0 actually restores previous.
+
+                # TODO: Two alternatives worth exploring: adjust least tilted instead, 
+                # and using projection of derivative in xy plane to find most tilted.
+                # need also to consider hardcoding angles (meh?) 
+                drvs_x2_proj = drvs @ X[2]  # projection of the derivatives in z
+                target_motor = drvs_x2_proj.index(max(drvs_x2_proj))    # use most tilted axis
+                target_drv = drvs[target_motor]
+                
+                diff_a = target_a - a0
+                # distance in the direction parallel to direction of change, divided by rate of distance change per angle.
+                target_angle = ( target_drv / norm(target_drv) ) @ diff_a / norm(target_drv)
+                self.move(target_motor, target_angle)
+            
+            # close to levelling, use scheme 2
+            else:
+                # TODO: for each axis, vary the angle until value of a0 @ X[2] is maximised
+                raise NotImplemented
+
+
 
     def dump(self, name: str):
         if self.mapping is None:
@@ -179,9 +245,9 @@ class ArdManager:
                 mapping_json = file.read()
                 mapping_dict = json.loads(mapping_json)
 
-                for key, value in mapping_dict.items():
-                    if hasattr(self, key):
-                        setattr(self, key, value)
+                for comp, comp_map in mapping_dict.items():
+                    if hasattr(self, comp):
+                        setattr(self, comp, comp_map)
 
 
 class Arduino:
@@ -195,16 +261,16 @@ class Arduino:
 
     line: str = ""
 
-    ANGLE_PER_STEP: float = 1
+    ANGLE_PER_STEP: float = 1.8
 
-    # NOTE: change of timeout is allowed, but unexpected behaviour might result, eg in move_motor.
+    # NOTE: change of timeout is allowed, but unexpected behaviour might result, eg in move.
     def __init__(self, port:str, baud = 230400, timeout = None):
         self.open(port, baud = baud, timeout = timeout) 
         self.reset()
         self.get_dev_info()
         self.thread = Thread(target=self.worker)
         self.thread.start()
-        print('Arduino::__init__: initialised.')
+        print(f'Arduino::__init__: initialised arduino ID: {self.dev_id}.')
 
     def open(self, port:str, baud = 230400, timeout = None):
         self.dev = serial.Serial(port, baudrate = baud, timeout=timeout)
@@ -228,7 +294,7 @@ class Arduino:
     def write(self, message: str):
         self.dev.write(message)
 
-    def move_motor(self, target: float):  # make new variable to make sure this completes before new command is issued
+    def move(self, target: float):  # make new variable to make sure this completes before new command is issued
         steps = int(target / self.ANGLE_PER_STEP)
         self.write(f'MOVE {motor_id} {steps}')
 
@@ -278,7 +344,9 @@ class Arduino:
     def calibrate(self, ind: int, ref_mass: float) -> float:
         pass
 
-ardman = ArdManager()
-while True:
-    print(ardman.get_reading())
+if __name__ == "__main__":
+    ardman = ArdManager()
+    while True:
+        print(ardman.get_reading())
+        time.sleep(1)
 
