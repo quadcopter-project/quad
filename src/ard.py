@@ -29,7 +29,6 @@ class ArdReading:
 class ArdManager:
     arduinos: dict = dict()  # list of Arduino objects. dev_id -> arduino
     mapping = None
-    COMPONENTS = ['accel', 'dist', 'mass', 'motor']
 
     # TODO: deprecate, then remove timeout.
     def __init__(self, baud:int = 230400, timeout:float = None, config_name: str = None):
@@ -115,7 +114,7 @@ class ArdManager:
                 time.sleep(0.5)
             new_mapping.mass[i] = old_mapping.mass[old_id]
 
-        # overriding sub-entried, as new_mapping.accel and new_mapping.dist are still [None].
+        # overriding sub-entries, as new_mapping.accel and new_mapping.dist are still [None].
         old_mapping.motor = new_mapping.motor
         old_mapping.mass = new_mapping.mass
 
@@ -123,8 +122,7 @@ class ArdManager:
         reading = ArdReading()
         dev_reading = {dev_id: arduino.get_reading() for dev_id, arduino in self.arduinos.items()}
 
-        for comp in self.COMPONENTS:
-            comp_map = getattr(self.mapping, comp)
+        for comp, comp_map in asdict(self.mapping).items():
             comp_reading = getattr(reading, comp) 
             # put readings in according to id order
             for dev_id, comp_id in comp_map:
@@ -133,16 +131,13 @@ class ArdManager:
 
         return reading
 
-    # backwards compatible
     def get_mass(self) -> list:
         return self.get_reading().mass
 
-    # NOTE: returns numpy array for easier geometric manipulation. 
-    def get_accel(self, accel_id: int) -> array:
-        return array(self.get_reading().accel[accel_id])
+    def get_accel(self, accel_id: int = 0) -> list:
+        return self.get_reading().accel[accel_id]
 
     # angle: list of angles to move for each motor.
-    # TODO: use AccelStepper on Arduino and has it report motor moving status, so we can move multiple motors simultaneously
     def move(self, target: list, block:bool = True):
         motor_num = len(self.mapping.motor)
         if len(target) != motor_num:
@@ -165,52 +160,6 @@ class ArdManager:
         motor_num = len(self.mapping.motor)
         target = [0 if i != motor_id else target for i in range(motor_num)]
         self.move(target, block)
-
-    # accel_id: mapped id of accelerometer device to use.
-    # we are forced into this python control script, since a single arduino won't have 
-    # enough pins to control all motors and read from accelerometer at the same time.
-    def level(self, accel_id: int = 0):
-        # TODO: tune these parameters
-        SCHEME1_THRESHOLD = 8.5     # z-axis accel below which we use scheme 1.
-        D_THETA = 1.8 * 3   # small angle to move by
-        X = array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])   # unit vectors: X[0, 1, 2] respectively.
-        while True:
-            # a -> acceleration as in physics.
-            # it has components in x, y and z unit vectors respectively.
-            a0 = self.get_accel(accel_id) 
-            target_a = norm(a0) * X[2]    # final a will have all its lengths on z
-            motor_num = len(self.mapping.motor)
-            
-            # TODO: use norm of diff_a for threshold instead, and
-            # TODO: implement break condition from while loop
-            # use scheme 1
-            if (a0 @ X[2] < SCHEME1_THRESHOLD):
-                drvs = list() # derivatives d(a) / d(theta)
-                for motor_id in range(motor_num):
-                    move(motor_id, D_THETA)
-                    a1 = self.get_accel(accel_id)
-                    drvs.append((a1 - a0) / D_THETA)
-                    self.move(motor_id, -D_THETA)
-                # TODO: worth checking if the value of a0 actually restores previous.
-
-                # TODO: Two alternatives worth exploring: adjust least tilted instead, 
-                # and using projection of derivative in xy plane to find most tilted.
-                # need also to consider hardcoding angles (meh?) 
-                drvs_x2_proj = drvs @ X[2]  # projection of the derivatives in z
-                target_motor = drvs_x2_proj.index(max(drvs_x2_proj))    # use most tilted axis
-                target_drv = drvs[target_motor]
-                
-                diff_a = target_a - a0
-                # distance in the direction parallel to direction of change, divided by rate of distance change per angle.
-                target_angle = ( target_drv / norm(target_drv) ) @ diff_a / norm(target_drv)
-                self.move(target_motor, target_angle)
-            
-            # close to levelling, use scheme 2
-            else:
-                # TODO: for each axis, vary the angle until value of a0 @ X[2] is maximised
-                raise NotImplemented
-
-
 
     def dump(self, name: str):
         if self.mapping is None:
