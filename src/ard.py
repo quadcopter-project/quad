@@ -19,6 +19,9 @@ class ArdReading:
     dist: list = field(default_factory = list)
     mass: list = field(default_factory = list)
     motor: list = field(default_factory = list)
+    # a pseudo-list. Arduino will only ever return list of one value indictaing its state.
+    # However, this helps keep the code free of special cases
+    operating: list = field(default_factory = list)
 
     def load(self, output_dict: dict):
         for key, value in output_dict.items():
@@ -138,7 +141,7 @@ class ArdManager:
         return self.get_reading().accel[accel_id]
 
     # angle: list of angles to move for each motor.
-    def move(self, target: list, block:bool = True):
+    def move(self, target: list):
         motor_num = len(self.mapping.motor)
         if len(target) != motor_num:
             raise Exception('(E) ArdManager::move: target list does not match number of motors.')
@@ -147,19 +150,17 @@ class ArdManager:
             dev_id, comp_id = self.mapping.motor[i]
             self.arduinos[dev_id].move(comp_id, target[i])
 
-        if block:
-            while True:
-                reading = self.get_reading()
-                if True not in reading.motor:
-                    break
-                time.sleep(0.5)
+        while True:
+            reading = self.get_reading()
+            if True not in reading.motor:
+                break
+            time.sleep(0.5)
 
-    # TODO: since non-block is not safe, consider just removing it?
-    def move_motor(motor_id: int, target: float, block = True):
+    def move_motor(motor_id: int, target: float):
         # TODO: define get_motor_num function
         motor_num = len(self.mapping.motor)
         target = [0 if i != motor_id else target for i in range(motor_num)]
-        self.move(target, block)
+        self.move(target)
 
     def dump(self, name: str):
         if self.mapping is None:
@@ -201,7 +202,6 @@ class ArdManager:
 
 class Arduino:
     conn: bool = False
-    moving: bool = False
 
     baud: int = None
     port: str = None
@@ -243,12 +243,19 @@ class Arduino:
     def write(self, message: str):
         self.dev.write(message)
 
-    def move(self, target: float):  # make new variable to make sure this completes before new command is issued
+    def move(self, target: float):
         steps = int(target / self.ANGLE_PER_STEP)
         self.write(f'MOVE {motor_id} {steps}')
+        time.sleep(0.5)
+        
+        while self.is_moving():
+            time.sleep(0.2)
+
+    def is_operating() -> bool:
+        return True in self.get_reading().operating
 
     def get_dev_info(self):
-        self.write(b'INFO')
+        self.write(b'IDEN')
         while not self.dev_id:
             line = self.readline()
             parsed = line.strip().split()
@@ -270,7 +277,7 @@ class Arduino:
 
             self.line = self.readline()
 
-    def readline(self) -> str:  # TODO: Transform this into a blocking call by removing timeout
+    def readline(self) -> str:
         line = self.dev.readline().decode('ascii').strip()
         return line
 
@@ -285,13 +292,16 @@ class Arduino:
 
         output_json = parsed[1]
         output_dict = json.loads(output_json)
-        readings = ArdReading()
-        readings.load(output_dict)
-        return readings
+        reading = ArdReading()
+        reading.load(output_dict)
+        return reading
         
-    # TODO: Rewrite this with new apis
-    def calibrate(self, ind: int, ref_mass: float) -> float:
-        pass
+    # TODO: Not finished yet. Also need to add code to obtain calib_factor in get_dev_info
+    def calibrate(self, cell_id: int, ref_mass: float):
+        MASS_TOLERANCE: float = 0.01
+        print(f'Arduino::calibrate: calibrating cell {cell_id} on device {self.dev_id}. ref_mass = {ref_mass}g.')
+        input('Confirm balance taring: ')
+        
 
 if __name__ == "__main__":
     ardman = ArdManager()

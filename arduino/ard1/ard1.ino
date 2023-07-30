@@ -1,11 +1,12 @@
 const int DEV_ID = 1;
+bool isOperating = false;
 
 // Load cell
 #include "HX711.h"
 const int NUM_CELLS = 3;
 const int LOADCELL_DOUT_PIN_0 = 3;
 const int LOADCELL_SCK_PIN_0 = 2;
-double CALIB_FACTOR[NUM_CELLS] = {16660, 16660, 16660};
+const double CALIB_FACTOR[NUM_CELLS] = {16660, 16660, 16660};
 
 HX711 scales[NUM_CELLS];
 
@@ -81,6 +82,15 @@ void get_units(double* mass) {
     }
 }
 
+inline void tare() { 
+    isOperating = true;
+    report();
+    for (int i = 0; i < NUM_CELLS; i++) scales[i].tare(); 
+    isOperating = false;
+    report();
+}
+
+inline void set_scale() { for (int i = 0; i < NUM_CELLS; i++) scales[i].set_scale(CALIB_FACTOR[i]); }
 
 // I/O functions
 inline void flushInput() { while (Serial.available()) Serial.read(); }
@@ -100,6 +110,8 @@ inline void report() {
         Serial.print(mass[i]);
     }
 
+    Serial.print("], \"operating\": [");
+    Serial.print(isOperating);
     Serial.println("]}");
 }
 
@@ -110,9 +122,9 @@ void setup() {
     for (int i = 0; i < NUM_CELLS; i++) {
         HX711& scale = scales[i];
         scale.begin(LOADCELL_DOUT_PIN_0 + i * 2, LOADCELL_SCK_PIN_0 + i * 2);
-        scale.set_scale(CALIB_FACTOR[i]);
-        scale.tare();
     }
+    set_scale();
+    tare();
 }
 
 void loop() {
@@ -121,15 +133,19 @@ void loop() {
         char substr[20];
         next_substr(substr);
 
-        if (strcmp(substr, "INFO") == 0) {
-            Serial.print("IDEN "); Serial.println(DEV_ID);
-        } else if (strcmp(substr, "CALIB") == 0) {
+        if (strcmp(substr, "IDEN") == 0) {
+            Serial.print("IDEN ");
+            Serial.println(DEV_ID);
+
+            Serial.print("CALIB");
             for (int i = 0; i < NUM_CELLS; i++) {
-                next_substr(substr);
-                CALIB_FACTOR[i] = substr_to_double();
+                Serial.print(" ");
+                Serial.print(CALIB_FACTOR[i]);
             }
+        } else if (strcmp(substr, "TARE") == 0) {
+            tare();
         }
-    } 
+    }
 
     report();
 

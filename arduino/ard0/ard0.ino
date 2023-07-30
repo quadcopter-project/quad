@@ -1,4 +1,5 @@
 const int DEV_ID = 0;
+bool isOperating = false;
 
 // MOTOR
 #include <AccelStepper.h>
@@ -8,8 +9,6 @@ const int DIR_PIN[NUM_MOTOR] = {2, 4, 6};
 
 const int MOTOR_MAX_SPEED = 60;
 const int MOTOR_ACCELERATION = 200;
-
-bool isOperating = false;
 
 AccelStepper motor[NUM_MOTOR];
 
@@ -253,7 +252,7 @@ inline void report() {
     bool moving[NUM_MOTOR];
     for (int i = 0; i < NUM_MOTOR; i++) {
         // isOperating has overriding authority.
-        moving[i] = isOperating | motor[i].isRunning();
+        moving[i] = motor[i].isRunning();
     }
      
     // formatted output
@@ -266,17 +265,19 @@ inline void report() {
         Serial.print(moving[i]);
     }
 
-    Serial.print("], \"accel\": [");
+    Serial.print("], \"accel\": [[");
     Serial.print(accel[0]);
     for (int i = 1; i < 3; i++) {
         Serial.print(", ");
         Serial.print(accel[i], 3);
     }
 
-    Serial.print("], \"dist\": ");
+    Serial.print("]], \"dist\": [");
     Serial.print(distance);
 
-    Serial.println("}");
+    Serial.print("], \"operating\": [");
+    Serial.print(isOperating);
+    Serial.println("]}");
 }
 
 
@@ -299,7 +300,7 @@ void loop() {
         char substr[20];
         next_substr(substr);
 
-        if (strcmp(substr, "INFO") == 0) {
+        if (strcmp(substr, "IDEN") == 0) {
             Serial.print("IDEN "); Serial.println(DEV_ID);
         } else if (strcmp(substr, "MOTOR") == 0) {
              
