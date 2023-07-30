@@ -104,7 +104,7 @@ class ArdManager:
             print('Push / pull on the load cell to be assigned new id {i}.')
             old_id = None
             while True:
-                mass = self.get_reading().mass   #TODO: NOT IMPLEMENTED YET
+                mass = self.get_reading().mass
                 for i in range(len(mass)):
                     if abs(mass[i]) > 50:
                         old_id = i

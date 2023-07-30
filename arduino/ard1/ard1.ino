@@ -1,11 +1,11 @@
-const int DEV_ID = 2;
+const int DEV_ID = 1;
 
 // Load cell
 #include "HX711.h"
-const int NUM_CELLS = 6;
+const int NUM_CELLS = 3;
 const int LOADCELL_DOUT_PIN_0 = 3;
 const int LOADCELL_SCK_PIN_0 = 2;
-double CALIB_FACTOR[NUM_CELLS] = {16660, 16660, 16660, 16660, 16660, 16660};
+double CALIB_FACTOR[NUM_CELLS] = {16660, 16660, 16660};
 
 HX711 scales[NUM_CELLS];
 

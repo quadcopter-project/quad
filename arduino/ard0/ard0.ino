@@ -9,13 +9,16 @@ const int DIR_PIN[NUM_MOTOR] = {2, 4, 6};
 const int MOTOR_MAX_SPEED = 60;
 const int MOTOR_ACCELERATION = 200;
 
+bool isOperating = false;
+
 AccelStepper motor[NUM_MOTOR];
 
 // MOTOR algorithm parameters
-const double EXCESS_DOWNWARD_MOVEMENT = 1;
 const double DOWNWARD_SPEED = -60;
 const double UPWARD_SPEED = 30;
-const int LEVEL_TEST_STEP = 5;
+const int LEVEL_TEST_STEP = -5;
+const double DIST_TOLERANCE = 0.2;
+const double ACCEL_TOLERANCE = 0.03; // translates to about 0.2 degs
 
 // HC-SR04
 #include <NewPing.h>
@@ -136,18 +139,26 @@ For consistency, if it's lowered, then it will first lower below this lim, then 
 the lim is hit.
 */
 void _setHeight(double lim) {
+    bool wasOperating = isOperating;
+    isOperating = true;
+    report();
+
     double dist = getDistance();
-    if (dist >= lim - EXCESS_DOWNWARD_MOVEMENT) {
+    // define distance from when the sensor _just_ starts to report that distance
+    // as the drone is raised.
+    if (dist >= lim) {
         setSpeed(DOWNWARD_SPEED);
-        while (dist > lim - EXCESS_DOWNWARD_MOVEMENT) {
+        while (dist >= lim) {
             runSpeed();
             dist = getDistance();
-            report();
+            report();   // TODO: in a production version, this can be eliminated
             delay(50);  // for ultrasound echo to get ready
         }
     } 
-    stop();     // TODO: have it run() a few cycles here?
-    run();
+    stop();
+    blockedRun();
+
+    level();
 
     // and now we are sure the drone is below specified height limit.
     setSpeed(UPWARD_SPEED);
@@ -158,21 +169,30 @@ void _setHeight(double lim) {
         delay(50);
     }
     stop();
-    run();
+    blockedRun();
+
+    level();
+
+    isOperating = false | wasOperating;
+    report();
 }
 
-// BLOCKING: during this process the arduino refuses any new calls, but keeps reporting data to the host.
 void level() {
+    bool wasOperating = isOperating;    // in case level was called by another function that "operates."
+    isOperating = true;
+    report();
+
     double accel[3], z, z1;
+    // TODO: once in a certain order might not be enough. Consider adding a while above tolerance statement.
     for (int i = 0; i < NUM_MOTOR; i++) {
         getAccel(accel);
         z = accel[2];
 
-        motor[i].move(-LEVEL_TEST_STEP);
+        motor[i].move(LEVEL_TEST_STEP);
         blockedRun();
-        getAccel(accel1);
-        z1 = accel1[2];
-        if (z1 <= z) { // TODO: set error term here.
+        getAccel(accel);
+        z1 = accel[2];
+        if (z1 <= z) { // TODO: set error tolerance term here.
             // this axis is no good, revert.  
             motor[i].move(LEVEL_TEST_STEP);
             blockedRun();
@@ -185,20 +205,38 @@ void level() {
                 runSpeed();
                 delay(20);
                 z1 = accel[2];
-                report();
+                report();   // TODO: remove this in final version
             }
         }
     }
+
     flushInput();
+    isOperating = false | wasOperating;
+    report();
 }
 
 // BLOCKING: during this process the arduino refuses any new calls, but keeps reporting data to the host.
-void setHeight(double height) {
-    while (true) {
-        
+void setHeight(double lim) {
+    bool wasOperating = isOperating;
+    isOperating = true;
+    report();
+
+    double dist = getDistance();
+    double accel[3];
+    getAccel(accel);
+
+    // TODO: This actually grants pm DIST_TOLERANCE. too much?
+    while (abs(dist - lim) > DIST_TOLERANCE \
+        || max(abs(accel[0]), abs(accel[1])) > ACCEL_TOLERANCE) {
+        _setHeight(lim);
+        getAccel(accel);
+        dist = getDistance();
         report();
     }
+
     flushInput();
+    isOperating = false | wasOperating;
+    report();
 }
 
 inline void flushInput() { while (Serial.available()) Serial.read(); }
@@ -214,7 +252,8 @@ inline void report() {
     // motor
     bool moving[NUM_MOTOR];
     for (int i = 0; i < NUM_MOTOR; i++) {
-        moving[i] = motor[i].isRunning();
+        // isOperating has overriding authority.
+        moving[i] = isOperating | motor[i].isRunning();
     }
      
     // formatted output
@@ -237,7 +276,7 @@ inline void report() {
     Serial.print("], \"dist\": ");
     Serial.print(distance);
 
-    Serial.print("}");
+    Serial.println("}");
 }
 
 
@@ -266,10 +305,11 @@ void loop() {
              
         } else if (strcmp(substr, "LEVEL") == 0) {
             stop();
+            blockedRun();
             level();
         } else if (strcmp(substr, "HEIGHT") == 0) {
             stop();
-            // TODO: not implemented.
+            blockedRun();
             double height = substr_to_double();
             setHeight(height);
         }

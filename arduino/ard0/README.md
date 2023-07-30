@@ -11,42 +11,54 @@ It will be capable of the following:
 - Return telemetry of distance sensor, accelerometer and motor state.
 
 ## Layout
-Arduino     MMA8451
-5V          Vin
-GND         GND
-A4          SNA
-A5          SCL 
+| Arduino | MMA |
+|---------|-----|
+| 5V      | Vin |
+| GND     | GND |
+| A4      | SNA |
+| A5      | SCL |
 
-Arduino     DM542T-*
-GND         DIR-
-GND         PUL-
+| Arduino | DM542T-* |
+|---------|----------|
+| GND     | DIR-     |
+| GND     | PUL-     |
 
-Arduino     DM542T-1
-2           DIR+
-3           PUL+
+| Arduino | DM542T-1 |
+|---------|----------|
+| 2       | DIR+     |
+| 3       | PUL+     |
 
-Arduino     DM542T-2
-4           DIR+
-5           PUL+
+| Arduino | DM542T-2 |
+|---------|----------|
+| 4       | DIR+     |
+| 5       | PUL+     |
 
-Arduino     DM542T-3
-6           DIR+
-7           PUL+
+| Arduino | DM542T-3 |
+|---------|----------|
+| 6       | DIR+     |
+| 7       | PUL+     |
 
-Arduino     HC-SR04 
-8           TRIG
-9           ECHO 
+| Arduino | HC-SR04 |
+|---------|---------|
+| 8       | TRIG    |
+| 9       | ECHO    |
 
-DM542T-*    NEMA17-*
-A+          Red
-A-          Blue
-B+          Green
-B-          Black
+| DM542T-* | NEMA17-* |
+|----------|----------|
+| A+       | Red      |
+| A-       | Blue     |
+| B+       | Green    |
+| B-       | Black    |
 
-DM542T-*    EP-613 (30V)
-+Vdc        +
-GND         -
+| DM542T-* | EP-613 (30V) |
+|----------|--------------|
+| +Vdc     | +            |
+| GND      | -            |
 
-\*          EP-613 (5V)
-VCC         +
-GND         -
+| *   | EP-613 (5V) |
+|-----|-------------|
+| VCC | +           |
+| GND | -           |
+
+## Behaviour
+Blocking functions, such as `setHeight`, will ignore server command when working. There is no guarantee these will report back during adjustment, but at the start and end of these functions they will report that motors are on / off with the `isOperating` flag. This will help with the blocking methods on Python's end.
