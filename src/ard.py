@@ -33,13 +33,12 @@ class ArdManager:
     arduinos: dict = dict()  # list of Arduino objects. dev_id -> arduino
     mapping = None
 
-    # TODO: deprecate, then remove timeout.
-    def __init__(self, baud:int = 230400, timeout:float = None, config_name: str = None):
+    def __init__(self, baud:int = 230400, config_name: str = None):
         self.ports = list(serial.tools.list_ports.grep('0043'))  # filter for arduino devices by their PID
         print(f'ArdManager::__init__: found {len(self.ports)} Arduinos.')
         for port in self.ports:
             print(f'ArdManager::__init__: initialising {port.description} on {port.device}.')
-            ard = Arduino(port.device, baud, timeout)
+            ard = Arduino(port.device, baud)
             self.arduinos[ard.dev_id] = ard 
 
         self.arduinos = dict(sorted(self.arduinos.items()))
@@ -212,17 +211,16 @@ class Arduino:
 
     ANGLE_PER_STEP: float = 1.8
 
-    # NOTE: change of timeout is allowed, but unexpected behaviour might result, eg in move.
-    def __init__(self, port:str, baud = 230400, timeout = None):
-        self.open(port, baud = baud, timeout = timeout) 
+    def __init__(self, port:str, baud = 230400):
+        self.open(port, baud = baud) 
         self.reset()
         self.get_dev_info()
         self.thread = Thread(target=self.worker)
         self.thread.start()
         print(f'Arduino::__init__: initialised arduino ID: {self.dev_id}.')
 
-    def open(self, port:str, baud = 230400, timeout = None):
-        self.dev = serial.Serial(port, baudrate = baud, timeout=timeout)
+    def open(self, port:str, baud = 230400):
+        self.dev = serial.Serial(port, baudrate = baud, timeout = None)
         self.port = port
         self.baud = baud
         self.conn = True
@@ -248,7 +246,7 @@ class Arduino:
         self.write(f'MOVE {motor_id} {steps}')
         time.sleep(0.5)
         
-        while self.is_moving():
+        while self.is_operating():
             time.sleep(0.2)
 
     def is_operating() -> bool:
@@ -256,6 +254,7 @@ class Arduino:
 
     def get_dev_info(self):
         self.write(b'IDEN')
+        # Getting dev_id means terminating the IDEN call.
         while not self.dev_id:
             line = self.readline()
             parsed = line.strip().split()
@@ -263,11 +262,10 @@ class Arduino:
             cmd = parsed[0]
             param = parsed[1:]
             match cmd:
+                case 'CALIB':
+                    self.calib_factor = [float(val) for val in param] 
                 case 'IDEN':
                     self.dev_id = int(param[0]) 
-            
-        if not self.dev_id:
-            raise IOError('(E) Arduino::get_dev_info: unable to fetch Arduino information in 5 lines.')
 
     def worker(self):
         while True:
@@ -295,13 +293,34 @@ class Arduino:
         reading = ArdReading()
         reading.load(output_dict)
         return reading
+
+    # BLOCKING CALL. 
+    def tare(self):
+        self.write('TARE')
+        time.sleep(0.5)
+        while self.is_operating():
+            time.sleep(0.2)
         
     # TODO: Not finished yet. Also need to add code to obtain calib_factor in get_dev_info
     def calibrate(self, cell_id: int, ref_mass: float):
         MASS_TOLERANCE: float = 0.01
         print(f'Arduino::calibrate: calibrating cell {cell_id} on device {self.dev_id}. ref_mass = {ref_mass}g.')
         input('Confirm balance taring: ')
+        self.tare()
+        input('Put standard mass on: ')
+        time.sleep(2)
         
+        t = time.time()
+        mass = list()
+
+        # get mass reading for 20s
+        while (time.time() < 20):
+            mass.append(self.get_reading().mass[cell_id])
+        mean_mass = sum(mass) / len(mass)
+        new_factor = self.calib_factor[cell_id] * (mean_mass / ref_mass)
+
+        print(f'Suggested new factor: {new_factor}. Update that in Arduino source.')
+
 
 if __name__ == "__main__":
     ardman = ArdManager()

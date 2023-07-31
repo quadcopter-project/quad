@@ -134,14 +134,15 @@ void loop() {
         next_substr(substr);
 
         if (strcmp(substr, "IDEN") == 0) {
-            Serial.print("IDEN ");
-            Serial.println(DEV_ID);
-
             Serial.print("CALIB");
             for (int i = 0; i < NUM_CELLS; i++) {
                 Serial.print(" ");
                 Serial.print(CALIB_FACTOR[i]);
             }
+
+            Serial.print("IDEN ");
+            Serial.println(DEV_ID);
+
         } else if (strcmp(substr, "TARE") == 0) {
             tare();
         }
