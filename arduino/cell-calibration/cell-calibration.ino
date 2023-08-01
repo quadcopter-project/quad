@@ -3,10 +3,10 @@ bool isOperating = false;
 
 // Load cell
 #include "HX711.h"
-const int NUM_CELLS = 6;
+const int NUM_CELLS = 1;
 const int LOADCELL_DOUT_PIN_0 = 3;
 const int LOADCELL_SCK_PIN_0 = 2;
-const double CALIB_FACTOR[NUM_CELLS] = {4305.175, 4193.374, 4394.816, 16660, 16660, 16660};
+const double CALIB_FACTOR[NUM_CELLS] = {4394.816};
 
 HX711 scales[NUM_CELLS];
 
@@ -137,7 +137,7 @@ void loop() {
             Serial.print("CALIB");
             for (int i = 0; i < NUM_CELLS; i++) {
                 Serial.print(" ");
-                Serial.print(CALIB_FACTOR[i]);
+                Serial.print(CALIB_FACTOR[i], 3);
             }
             Serial.println();
 

@@ -179,6 +179,7 @@ class ArdManager:
         dist: list = field(default_factory = list)
         mass: list = field(default_factory = list)   # motor id -> (dev_id, #motor_output)
         motor: list = field(default_factory = list)
+        operating: list = field(default_factory = list)
 
         def dump(self, name):
             if os.path.isfile(name):
@@ -211,13 +212,16 @@ class Arduino:
 
     ANGLE_PER_STEP: float = 1.8
 
-    def __init__(self, port:str, baud = 230400):
+    def __init__(self, port:str, baud:int = 230400):
+        self.port = port
+        self.baud = baud
         self.open(port, baud = baud) 
         self.reset()
         self.get_dev_info()
         self.thread = Thread(target=self.worker)
         self.thread.start()
-        print(f'Arduino::__init__: initialised arduino ID: {self.dev_id}.')
+        time.sleep(1)   # for the first line to be populated
+        print(f'Arduino::__init__: initialised arduino #{self.dev_id} on {self.port}.')
 
     def open(self, port:str, baud = 230400):
         self.dev = serial.Serial(port, baudrate = baud, timeout = None)
@@ -239,7 +243,7 @@ class Arduino:
         time.sleep(2)
 
     def write(self, message: str):
-        self.dev.write(message)
+        self.dev.write(message.encode())
 
     def move(self, target: float):
         steps = int(target / self.ANGLE_PER_STEP)
@@ -249,11 +253,11 @@ class Arduino:
         while self.is_operating():
             time.sleep(0.2)
 
-    def is_operating() -> bool:
+    def is_operating(self) -> bool:
         return True in self.get_reading().operating
 
     def get_dev_info(self):
-        self.write(b'IDEN')
+        self.write('IDEN')
         # Getting dev_id means terminating the IDEN call.
         while not self.dev_id:
             line = self.readline()
@@ -286,6 +290,7 @@ class Arduino:
         cmd = parsed[0] 
         if cmd != 'DAT':
             print(f'(E) Arduino::get_reading: line is of type {cmd}, cannot parse to output data.')
+            print(self.line)
             return None
 
         output_json = parsed[1]
@@ -314,9 +319,14 @@ class Arduino:
         mass = list()
 
         # get mass reading for 20s
-        while (time.time() < 20):
-            mass.append(self.get_reading().mass[cell_id])
+        while (time.time() - t < 20):
+            mass_reading = self.get_reading().mass[cell_id]
+            mass.append(mass_reading)
+            time.sleep(0.2)
+            print(f'{mass_reading}g')
+            
         mean_mass = sum(mass) / len(mass)
+        print(f'average {mean_mass}')
         new_factor = self.calib_factor[cell_id] * (mean_mass / ref_mass)
 
         print(f'Suggested new factor: {new_factor}. Update that in Arduino source.')

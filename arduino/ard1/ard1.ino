@@ -6,7 +6,7 @@ bool isOperating = false;
 const int NUM_CELLS = 3;
 const int LOADCELL_DOUT_PIN_0 = 3;
 const int LOADCELL_SCK_PIN_0 = 2;
-const double CALIB_FACTOR[NUM_CELLS] = {16660, 16660, 16660};
+const double CALIB_FACTOR[NUM_CELLS] = {4321.850, 4255.468, 4159.483};
 
 HX711 scales[NUM_CELLS];
 
@@ -101,7 +101,7 @@ inline void report() {
     get_units(mass);
 
     // formatted output
-    Serial.print("{");
+    Serial.print("DAT {");
     
     Serial.print("\"mass\": [");
     Serial.print(mass[0]);
@@ -139,6 +139,7 @@ void loop() {
                 Serial.print(" ");
                 Serial.print(CALIB_FACTOR[i]);
             }
+            Serial.println();
 
             Serial.print("IDEN ");
             Serial.println(DEV_ID);
