@@ -14,14 +14,23 @@ import multiprocessing as mp
 @dataclass
 class Frame:
     t: float = 0
+
+    # arduino input: ArdReading can be passed in with asdict.
+    accel: list = field(default_factory=list)
+    dist: list = field(default_factory = list)
     mass: list = field(default_factory=list) # list of mass readings from different sensors.
+
+    # drone input
     rpm: list = field(default_factory=list) # list of rpm readings from different motors
+
+    # mic input
     audio:list = field(default_factory=list) # list of lists of audio
     dt:float = 0
     fft_freq:list = field(default_factory=list) 
     fft_ampl: list = field(default_factory=list) 
     peak_freq:list = field(default_factory=list) 
     peak_ampl:list = field(default_factory=list) 
+
     compact:bool = False        # put at the end, so can assume it implicitly.
 
     # return _copy_ of original frame without audio
@@ -55,25 +64,35 @@ class Data:
     compact: bool = False
     frames: list = field(default_factory=list)
     
-    # tolerance for data not present: those are assumed zero.
-    def add(self, t:float, mass:list=[0], rpm:list=[0],
-            audio:list=[0], dt:float=1, fl:float=0, fr:float=20000):
+    # def add(self, t:float, mass:list=[0], rpm:list=[0],
+    #        audio:list=[0], dt:float=1, fl:float=0, fr:float=20000):
+    def add(self, t:float,
+            audio:list = None,
+            dt:float = None,
+            fl:float = 0,
+            fr:float = 20000,
+            **kwargs):
         # process peaks
-        freq, ampl = Numerical.fft(audio, dt, fl, fr)
-        peak_freq, peak_ampl = Numerical.find_peaks(freq, ampl) 
-        peak_freq, peak_ampl = Numerical.sort_peaks(peak_freq, peak_ampl)
+        freq, ampl, peak_freq, peak_ampl = [None for i in range(4)]
+        if audio and dt:
+            freq, ampl = Numerical.fft(audio, dt, fl, fr)
+            peak_freq, peak_ampl = Numerical.find_peaks(freq, ampl) 
+            peak_freq, peak_ampl = Numerical.sort_peaks(peak_freq, peak_ampl)
+
+        # useful for e.g. an unpacked ArdReading.
+        for kw in kwargs.keys():
+            if not hasattr(Frame, kw):
+                kwargs.pop(kw)
 
         self.frames.append(Frame(t = t,
-                                 mass = mass,
-                                 rpm = rpm,
                                  audio = audio,
                                  dt = dt,
                                  fft_freq = freq,
                                  fft_ampl = ampl,
                                  peak_freq = peak_freq,
                                  peak_ampl = peak_ampl,
-                                 compact = False # TODO: for now assume not compact.
-                                 # TODO: compact factor might not be useful after all. Consider its removal.
+                                 compact = False,
+                                 **kwargs
                           )     )
     
     def clear(self):
