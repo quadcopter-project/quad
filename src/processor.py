@@ -418,3 +418,4 @@ def get_data_files(path: str) -> list:
             if os.path.isfile(os.path.join(path, filename))
             and filename.split('.')[-1] == 'json']
 
+

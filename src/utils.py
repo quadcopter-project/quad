@@ -235,6 +235,7 @@ class Data:
             print(data2 == data)
 
 
+# NOTE: DEPRECATED.
 # plots in a non-blocking manner.
 class Plotter:
     def __init__(self):
