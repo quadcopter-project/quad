@@ -14,6 +14,8 @@ When adding a new plot method, one must modify the following:
 
     vector plotters must end with _vec for generic functions to recognise them automatically.
     they also don't require an XLABEL or YLABEL.
+
+    plotting vectors by component is handled by _comp functions.
 """
 
 from utils import Data
@@ -21,26 +23,26 @@ import matplotlib.pyplot as plt
 
 class Plotter:
     # SUPPORTED graph_type's (private)
-    SUPPORTED: list = ['audio', 'freq', 'mean_rpm', 'peak', 'total_mass', 'mass_vec', 'simple']
+    SUPPORTED: list = ['audio', 'freq', 'mean_rpm', 'peak', 'total_mass', 'mass_vec', 'mass_comp']
     XLABELS: dict = {'audio': 'time / s',
                      'freq': 'freq / Hz',
                      'mean_rpm': 'time / s',
                      'peak': 'time / s',
                      'total_mass': 'time / s',
-                     'simple': 'x'}
+                     'mass_comp': 'time / s'}
     YLABELS: dict = {'audio': '',
                      'freq': '',
                      'mean_rpm': 'rpm / min^-1',
                      'peak': 'freq / Hz',
                      'total_mass': 'mass / g',
-                     'simple':'y'}
+                     'mass_comp': 'mass / g'}
     TITLES: dict = {'audio': 'audio',
                     'freq': 'freq spectrum',
                     'mean_rpm': 'mean rpm',
                     'peak': 'history of peaks',
                     'total_mass': 'total mass',
                     'mass_vec': 'mass',
-                    'simple':''}
+                    'mass_comp': 'mass by component'}
     lines: dict = dict() # dictionaries of list of lines
 
 
@@ -56,57 +58,71 @@ class Plotter:
         self.nrows = nrows
         self.ncols = ncols
         self.graph_types = graph_types
-        self.fig, self.axs = plt.subplots(nrows = nrows, ncols = ncols, squeeze = False)
+        self.fig, self.axs = plt.subplots(nrows = nrows, ncols = ncols, squeeze = False, constrained_layout = True)
 
         for graph_id, graph_type in self.graph_types.items():
             init_func_name = 'init_' + graph_type
             # fallback to generic functions
             if not hasattr(self, init_func_name):
-                if graph_type.split('_')[-1] == 'vec':
-                    init_func_name = 'init_generic_vec'
-                else:
-                    init_func_name = 'init_generic'
+                graph_subtype = graph_type.split('_')[-1]
+                match graph_subtype:
+                    case 'vec':
+                        init_func_name = 'init_generic_vec'
+                    case 'comp':
+                        init_func_name = 'init_generic_comp'
+                    case _:
+                        init_func_name = 'init_generic'
 
             init_func = getattr(self, init_func_name)
 
             init_func(graph_id, graph_type)
             self.set_labels(graph_id, graph_type) 
     
-    def set_labels(self, graph_id: tuple, graph_type: str):
-        axis = self.get_axis(graph_id)
-        axis.set_title(self.TITLES[graph_type])
-        if graph_type.split('_')[-1] == 'vec':
-            axis.set_xlabel('x')
-            axis.set_ylabel('y')
-            axis.set_zlabel('z')
-        else:
-            axis.set_xlabel(self.XLABELS[graph_type])
-            axis.set_ylabel(self.YLABELS[graph_type])
-
-    def init_generic(self, graph_id: tuple, graph_type: str):
-        axis = self.get_axis(graph_id)
-        line = self.get_line(graph_id)
-        line.append(axis.plot([], [])[0])
-
     def init_freq(self, graph_id: tuple, graph_type: str):
         axis = self.get_axis(graph_id)
-        line = self.get_line(graph_id)
-        line.append(axis.plot([], [])[0])   # index 0:  frequency spectrum
-        line.append(axis.plot([], [], 'ro')[0]) # index 1: peaks
+        lines = self.get_lines(graph_id)
+        lines.append(axis.plot([], [])[0])   # index 0:  frequency spectrum
+        lines.append(axis.plot([], [], 'ro')[0]) # index 1: peaks
         
     def init_peak(self, graph_id: tuple, graph_type: str):
         axis = self.get_axis(graph_id)
-        line = self.get_line(graph_id)
-        line.append(axis.plot([], [], marker='o', ls='')[0])
+        lines = self.get_lines(graph_id)
+        lines.append(axis.plot([], [], marker='o', ls='', markersize = 2)[0])
+
+    def init_generic(self, graph_id: tuple, graph_type: str):
+        axis = self.get_axis(graph_id)
+        lines = self.get_lines(graph_id)
+        lines.append(axis.plot([], [])[0])
 
     def init_generic_vec(self, graph_id: tuple, graph_type: str):
         row, col = graph_id
         self.axs[row][col].remove()
         self.axs[row][col] = self.fig.add_subplot(self.nrows + 1, self.ncols + 1,   # the original grid
                                              self.ncols * row + col + 1, projection = '3d') # intended id
-        line = self.get_line(graph_id)
+        line = self.get_lines(graph_id)
         axis = self.get_axis(graph_id)
         line.append(axis.quiver(0, 0, 0, 0, 0, 0))
+
+    def init_generic_comp(self, graph_id: tuple, graph_type: str):
+        axis = self.get_axis(graph_id)
+        lines = self.get_lines(graph_id)
+        for i in range(3):  # three components of a vector
+            lines.append(axis.plot([], [], label = f'$x_{i}$')[0])
+        axis.legend()
+
+    def set_labels(self, graph_id: tuple, graph_type: str):
+        axis = self.get_axis(graph_id)
+        axis.set_title(self.TITLES[graph_type])
+        graph_subtype = graph_type.split('_')[-1]
+        match graph_subtype:
+            case 'vec':
+                axis.set_xlabel('x')
+                axis.set_ylabel('y')
+                axis.set_zlabel('z')
+            case _:     # including comp
+                axis.set_xlabel(self.XLABELS[graph_type])
+                axis.set_ylabel(self.YLABELS[graph_type])
+
         
 
     # UPDATE functions (public)
@@ -152,7 +168,7 @@ class Plotter:
         dt = cur_frame.dt
         t = [cur_t + n * dt for n in range(len(audio))]
 
-        line = self.get_line(graph_id)[0]
+        line = self.get_lines(graph_id)[0]
         line.set_xdata(t)
         line.set_ydata(audio)
 
@@ -163,17 +179,17 @@ class Plotter:
         peak_freq = cur_frame.peak_freq
         peak_ampl = cur_frame.peak_ampl
 
-        lines = self.get_line(graph_id)
-        lines[0].freq_ln.set_xdata(freq)
-        lines[0].freq_ln.set_ydata(ampl)
-        lines[1].peak_ln.set_xdata(peak_freq)
-        lines[1].peak_ln.set_ydata(peak_ampl)
+        lines = self.get_lines(graph_id)
+        lines[0].set_xdata(freq)
+        lines[0].set_ydata(ampl)
+        lines[1].set_xdata(peak_freq)
+        lines[1].set_ydata(peak_ampl)
         
     def update_peak(self, graph_id: tuple, graph_type: str, data: Data, window: int = None):
         x = []
         y = []
 
-        t = Data.get_t()
+        t = data.get_t()
         peaks = data.get_peak_freq()
         if window is not None:
             t = t[-window:]
@@ -184,7 +200,7 @@ class Plotter:
                 x.append(t[i])
                 y.append(peak)
 
-        line = self.get_line(graph_id)
+        line = self.get_lines(graph_id)[0]
         line.set_xdata(x)
         line.set_ydata(y)
         
@@ -197,14 +213,15 @@ class Plotter:
             t = t[-window:]
             val = val[-window:]
 
-        line = self.get_line(graph_id)[0]
+        line = self.get_lines(graph_id)[0]
         line.set_xdata(t)
         line.set_ydata(val)
             
+    # TODO: get_mass_vec is not implemented in Frame.
     def update_generic_vec(self, graph_id: tuple, graph_type: str, data: Data, window: int = None):
         cur_frame = data.get_frame(-1)
         get_func_name = 'get_' + graph_type
-        get_func = getattr(data, get_func_name) 
+        get_func = getattr(cur_frame, get_func_name) 
         vec = get_func()
         
         axis = self.get_axis(graph_id)
@@ -217,13 +234,26 @@ class Plotter:
         axis.set_ylim3d(bottom = -lim, top = lim)
         axis.set_zlim3d(bottom = -lim, top = lim)
 
+    # TODO: get_mass_comp is not implemented in Data.
+    def update_generic_comp(self, graph_id: tuple, graph_type: str, data: Data, window: int = None):
+       get_func_name = 'get_' + graph_type
+       get_func = getattr(data, get_func_name)
+       
+       t = data.get_t()
+       vec_list = get_func()    # list of vectors by time.
+       
+       lines = self.get_lines(graph_id)
+       for i in range(3):
+           lines[i].set_xdata(t)
+           lines[i].set_ydata([vec[i] for vec in vec_list])     # i-th component
+
     
     # GET functions (private)
     def get_axis(self, graph_id: tuple):
         row, col = graph_id
         return self.axs[row][col]
     
-    def get_line(self, graph_id: tuple):
+    def get_lines(self, graph_id: tuple):
         if graph_id not in self.lines.keys():
             self.lines[graph_id] = list()
         return self.lines[graph_id]

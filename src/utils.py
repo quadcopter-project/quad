@@ -16,8 +16,8 @@ class Frame:
     t: float = 0
 
     # arduino input: ArdReading can be passed in with asdict.
-    accel: list = field(default_factory=list)
-    dist: list = field(default_factory = list)
+    accel: list = field(default_factory=list) # list of lists, each inner list represent three components from an accelerometer.
+    dist: list = field(default_factory = list) # list of values, each represent reading from a distance sensor.
     mass: list = field(default_factory=list) # list of mass readings from different sensors.
 
     # drone input
@@ -54,13 +54,36 @@ class Frame:
     def get_mean_rpm(self):
         return st.mean(self.rpm)
 
+    # Only works on the 9-cell setup.
+    def get_mass_vec(self) -> list:
+        if len(self.mass) != 9:
+            raise IndexError('(E) Frame::get_mass_vec: must have 9 elements for get_mass_vec to work (9-cell setup.)')
+
+        from numpy import sin, cos, pi
+
+        f = np.reshape(self.mass, (3, 3))  # f: force vectors by cell, even though they are in grams
+        DEG15 = pi * 15 / 180
+        DEG45 = pi * 45 / 180
+        DEG75 = pi * 75 / 180
+
+        mass_vec = [None for i in range(3)]
+        mass_vec[0] = (- sin(DEG45) * f[0, 1] + sin(DEG45) * f[0, 2]
+                       + cos(DEG15) * f[1, 1] + cos(DEG75) * f[1, 2]
+                       - cos(DEG75) * f[2, 1] - cos(DEG15) * f[2, 2])
+        mass_vec[1] = (- cos(DEG45) * f[0, 1] - cos(DEG45) * F[0, 2]
+                       - sin(DEG15) * f[1, 1] + sin(DEG75) * f[1, 2]
+                       - sin(DEG75) * f[2, 1] - sin(DEG15) * f[2, 2])
+        mass_vec[2] = sum(f[:, 0])   # z-component adds simply
+        return mass_vec
+
 
 @dataclass
 class Data:
     height: float = None
     target_rpm: list = None
     timestamp: float = None
-    platform: str = None
+    platform: str = None    # 'snaptain' or 'betaflight' or 'betaflight-2.0'
+    description: str = None
     compact: bool = False
     frames: list = field(default_factory=list)
     
@@ -95,17 +118,8 @@ class Data:
                                  **kwargs
                           )     )
     
-    def clear(self):
-        self.height = None
-        self.frames.clear()
 
-    # TODO: not tested yet
-    def compactify(self):
-        data_copy = dataclasses.replace(self)
-        data_copy.frames = [frame.compactify() for frame in self.frames]
-        data_copy.compact = True
-        return data_copy
-
+    # GET functions (public)
     def get_t(self):
         return [frame.t for frame in self.frames]
 
@@ -115,11 +129,65 @@ class Data:
     def get_mass(self):
         return [frame.mass for frame in self.frames]
 
+    # only works as intended on the 3-cell setup.
     def get_total_mass(self):
         return [frame.get_total_mass() for frame in self.frames]
 
     def get_mean_rpm(self):
         return [frame.get_mean_rpm() for frame in self.frames]
+
+    def get_mass_vec(self):
+        return [frame.get_mass_vec() for frame in self.frames]
+
+    # NOTE: a dangerous bit of hard coding. frame.accel is returned as a list of lists, representing [x, y, z] of individual sensors.
+    def get_accel_vec(self) -> list:
+        return [frame.accel[0] for frame in self.frames]
+
+    # NOTE: same as above, a bit of hardcoding.
+    def get_dist(self) -> list:
+        return [frame.dist[0] for frame in self.frames]
+
+    # return average and stdev data for total mass over time.
+    # if only one data point is provided, stdev is set to 0.
+    def get_mass_stat(self) -> tuple[float, float]:
+        tot_mass = self.get_total_mass()
+        stdev = st.stdev(tot_mass) if len(tot_mass) > 1 else 0
+        return st.mean(tot_mass), stdev
+    
+    def get_log(self, ind:int = None, _t:float = None):
+        frame = self.get_frame(ind, _t)
+        return [frame.t, frame.get_total_mass(), frame.get_mean_rpm()] + frame.peak_freq
+
+    def get_frame(self, ind:int = None, _t:float = None):
+        if (ind and _t):
+            raise Exception("Can only get_frame() specifying one of index and time.")
+        if ind:
+            return self.frames[ind]
+        
+        if t:
+            for frame in self.frames:
+                if frame.t > _t:
+                    return frame
+        return None
+
+
+    # AUXILIARY functions (public)
+    def clear(self):
+        self.height = None
+        self.target_rpm = None
+        self.timestamp = None
+        self.platform = None
+        self.description = None
+        self.compact: bool = False
+    
+        self.frames.clear()
+
+    # TODO: not tested yet
+    def compactify(self):
+        data_copy = dataclasses.replace(self)
+        data_copy.frames = [frame.compactify() for frame in self.frames]
+        data_copy.compact = True
+        return data_copy
 
     def dump(self, name: str):
         frames_list = [frame.__dict__ for frame in self.frames]
@@ -159,29 +227,8 @@ class Data:
                 frame.update(frame_dict)
                 self.frames.append(frame)
 
-    # return average and stdev data for total mass over time.
-    # if only one data point is provided, stdev is set to 0.
-    def get_mass_stat(self) -> tuple[float, float]:
-        tot_mass = self.get_total_mass()
-        stdev = st.stdev(tot_mass) if len(tot_mass) > 1 else 0
-        return st.mean(tot_mass), stdev
-    
-    def get_log(self, ind:int = None, _t:float = None):
-        frame = self.get_frame(ind, _t)
-        return [frame.t, frame.get_total_mass(), frame.get_mean_rpm()] + frame.peak_freq
 
-    def get_frame(self, ind:int = None, _t:float = None):
-        if (ind and _t):
-            raise Exception("Can only get_frame() specifying one of index and time.")
-        if ind:
-            return self.frames[ind]
-        
-        if t:
-            for frame in self.frames:
-                if frame.t > _t:
-                    return frame
-        return None
-
+    # LEGACY functions (private)
     # deprecated in favour of new load function, which enables more sophiscated Data class structures. 
     def _load_frames_list(self, name):
         if not os.path.isfile(name):

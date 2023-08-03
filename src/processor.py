@@ -1,4 +1,4 @@
-import os
+import os, scipy
 import matplotlib.pyplot as plt
 import numpy as np
 import statistics as st
@@ -204,7 +204,7 @@ def get_results_by_batch(path: str, heights: float|list = None, rpm_range: list 
     for name in get_data_files(path):
         data = Data()
         data.load(name)
-        if data.platform != 'betaflight':
+        if 'betaflight' not in data.platform:
             print(f':rpm2_lift_plot: Platform mismatch in file {name}: expected "betaflight", got {data.platform}.')
             continue
 

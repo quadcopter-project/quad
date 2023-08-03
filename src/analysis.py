@@ -69,5 +69,4 @@ def gen_3d_plot(path: str):
 
 if __name__ == '__main__':
     path = '../raw/bf/setup-1/'
-    # gen_rpm2_lift_plot(path)
     gen_3d_plot(path)
