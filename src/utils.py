@@ -48,10 +48,10 @@ class Frame:
     # even when Arduino isn't connected, this will yield 0.
     # TODO: As we progress, might want to change Arduino behaviour to 
     # raising an error if arduino not found.
-    def get_total_mass(self):
+    def get_total_mass(self) -> float:
         return sum(self.mass)
 
-    def get_mean_rpm(self):
+    def get_mean_rpm(self) -> float:
         return st.mean(self.rpm)
 
     # Only works on the 9-cell setup.
@@ -87,8 +87,6 @@ class Data:
     compact: bool = False
     frames: list = field(default_factory=list)
     
-    # def add(self, t:float, mass:list=[0], rpm:list=[0],
-    #        audio:list=[0], dt:float=1, fl:float=0, fr:float=20000):
     def add(self, t:float,
             audio:list = None,
             dt:float = None,
@@ -120,23 +118,23 @@ class Data:
     
 
     # GET functions (public)
-    def get_t(self):
+    def get_t(self) -> list:
         return [frame.t for frame in self.frames]
 
-    def get_peak_freq(self):
+    def get_peak_freq(self) -> list:
         return [frame.peak_freq for frame in self.frames]
 
-    def get_mass(self):
+    def get_mass(self) -> list:
         return [frame.mass for frame in self.frames]
 
     # only works as intended on the 3-cell setup.
-    def get_total_mass(self):
+    def get_total_mass(self) -> list:
         return [frame.get_total_mass() for frame in self.frames]
 
-    def get_mean_rpm(self):
+    def get_mean_rpm(self) -> list:
         return [frame.get_mean_rpm() for frame in self.frames]
 
-    def get_mass_vec(self):
+    def get_mass_vec(self) -> list:
         return [frame.get_mass_vec() for frame in self.frames]
 
     # NOTE: a dangerous bit of hard coding. frame.accel is returned as a list of lists, representing [x, y, z] of individual sensors.
@@ -414,25 +412,22 @@ class Recorder:
             if (p.get_device_info_by_host_api_device_index(0, i).get('maxInputChannels')) > 0:
                 print("Input Device id ", i, " - ", p.get_device_info_by_host_api_device_index(0, i).get('name'))
 
-    def __init__(self, DEVICE_INDEX = None):
+    # defaults to pipewire output
+    def __init__(self, device_name: str = 'pipewire'):
         self.pa = pyaudio.PyAudio()
 
-        self.DEVICE_INDEX = DEVICE_INDEX
-
-        # if not specified... attempt to find pipewire device automatically.
         # don't use 'not' keyword in case index is 0
-        if self.DEVICE_INDEX is None:
-            info = self.pa.get_host_api_info_by_index(0)
-            numdevices = info.get('deviceCount')
-            for i in range (0, numdevices):
-                device = self.pa.get_device_info_by_host_api_device_index(0, i)
-                if device.get('maxInputChannels') > 0 and 'pipewire' in device.get('name'):
-                    self.DEVICE_INDEX = i
-                    break
+        info = self.pa.get_host_api_info_by_index(0)
+        numdevices = info.get('deviceCount')
+        for i in range (0, numdevices):
+            device = self.pa.get_device_info_by_host_api_device_index(0, i)
+            if device.get('maxInputChannels') > 0 and device_name in device.get('name'):
+                self.DEVICE_INDEX = i
+                break
 
         # not specified, nor is the device found.
         if self.DEVICE_INDEX is None:
-            raise Exception('utils:: Recorder: Device "pipewire" not found. Use get_outputs to see output list.')
+            raise Exception(f'utils:: Recorder: Device {device_name} not found. Use get_outputs to see output list.')
 
         self.stream = self.pa.open(format=self.SAMPLE_FORMAT,
                                    channels=self.CHANNELS,
@@ -440,7 +435,7 @@ class Recorder:
                                    frames_per_buffer=self.CHUNK,
                                    input=True,
                                    input_device_index=self.DEVICE_INDEX)
-        self.record(3)
+        self.record(3)  # rid of weird junk at start
         
     # get raw data; not parsed to avoid overhead during rec.
     def get_chunk(self) -> bytes:
@@ -502,7 +497,7 @@ class Numerical:
         return signal.filtfilt(b, a, audio)
 
     @staticmethod
-    def find_peaks(x:list, y:list, prom=30, dist=20, ht=50):
+    def find_peaks(x:list, y:list, prom=30, dist=20, ht=50) -> tuple[list, list]:
         peaks, _ = signal.find_peaks(y, prominence=prom, distance=dist, height=ht)
         peak_x = [x[peak] for peak in peaks]
         peak_y = [y[peak] for peak in peaks]
@@ -510,7 +505,7 @@ class Numerical:
 
     # sort the peaks in descending strength
     @staticmethod
-    def sort_peaks(peak_x:list, peak_y:list):
+    def sort_peaks(peak_x:list, peak_y:list) -> tuple[list, list]:
         res = sorted(zip(peak_y, peak_x), reverse = True)
         sorted_x = [el[1] for el in res]
         sorted_y = [el[0] for el in res]

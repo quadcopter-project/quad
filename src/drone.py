@@ -228,7 +228,7 @@ class Drone:
             # the polling rate allows for higher frequency, but DShot actually doesn't update that frequently
             time.sleep(0.5)
 
-    def get_avg_rpm(self):
+    def get_avg_rpm(self) -> float:
         return sum(self.rpm[:self.NUM_OF_MOTORS]) / self.NUM_OF_MOTORS
 
     def send(self, data):
@@ -249,7 +249,7 @@ class Drone:
         self.set_rpm_worker_on(False)
         self.set_arming(False)
         
-    def get_rpm(self):
+    def get_rpm(self) -> list:
         return self.rpm 
 
 
@@ -301,6 +301,7 @@ def test_switch():
 
 if __name__ == '__main__':
     print('LAUNCHED AS MAIN - COMMENCING TESTING...')
+    input('Confirm start: ')
     bf = Drone(path = '../bf-conf/debug/betaflight-configurator/linux64/betaflight-configurator')
     test_switch()
     bf.set_arming(True)

@@ -23,26 +23,34 @@ import matplotlib.pyplot as plt
 
 class Plotter:
     # SUPPORTED graph_type's (private)
-    SUPPORTED: list = ['audio', 'freq', 'mean_rpm', 'peak', 'total_mass', 'mass_vec', 'mass_comp']
-    XLABELS: dict = {'audio': 'time / s',
-                     'freq': 'freq / Hz',
-                     'mean_rpm': 'time / s',
-                     'peak': 'time / s',
-                     'total_mass': 'time / s',
-                     'mass_comp': 'time / s'}
+    SUPPORTED: list = ['audio', 'freq', 'peak', 'dist',
+                       'total_mass', 'mean_rpm',
+                       'mass_vec', 'accel_vec',
+                       'mass_comp', 'accel_comp']
+
+    XLABELS: dict = {'freq': 'freq / Hz'}
+    GENERIC_XLABEL = 'time / s'
+
     YLABELS: dict = {'audio': '',
                      'freq': '',
                      'mean_rpm': 'rpm / min^-1',
                      'peak': 'freq / Hz',
+                     'dist': 'distance / cm',
                      'total_mass': 'mass / g',
-                     'mass_comp': 'mass / g'}
-    TITLES: dict = {'audio': 'audio',
-                    'freq': 'freq spectrum',
-                    'mean_rpm': 'mean rpm',
-                    'peak': 'history of peaks',
-                    'total_mass': 'total mass',
-                    'mass_vec': 'mass',
-                    'mass_comp': 'mass by component'}
+                     'mass_comp': 'mass / g',
+                     'accel_comp': 'accel / m s^-2'}
+
+    TITLES: dict = {'audio': 'Audio',
+                    'freq': 'Freq Spectrum',
+                    'mean_rpm': 'Mean RPM',
+                    'peak': 'History of Peaks',
+                    'dist': 'Distance',
+                    'total_mass': 'Total Mass',
+                    'mass_vec': 'Mass',
+                    'mass_comp': 'Mass by Component',
+                    'accel_vec': 'Acceleration',
+                    'accel_comp': 'Acceleration by Component'}
+
     lines: dict = dict() # dictionaries of list of lines
 
 
@@ -120,7 +128,11 @@ class Plotter:
                 axis.set_ylabel('y')
                 axis.set_zlabel('z')
             case _:     # including comp
-                axis.set_xlabel(self.XLABELS[graph_type])
+                if graph_type in self.XLABELS.keys():
+                    axis.set_xlabel(self.XLABELS[graph_type])
+                else:
+                    axis.set_xlabel(self.GENERIC_XLABEL)
+
                 axis.set_ylabel(self.YLABELS[graph_type])
 
         
@@ -253,7 +265,7 @@ class Plotter:
         row, col = graph_id
         return self.axs[row][col]
     
-    def get_lines(self, graph_id: tuple):
+    def get_lines(self, graph_id: tuple) -> list:
         if graph_id not in self.lines.keys():
             self.lines[graph_id] = list()
         return self.lines[graph_id]

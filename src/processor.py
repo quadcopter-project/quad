@@ -194,7 +194,7 @@ def bin_by_w_plot(path: str, endpoints: list, fig: str = None):
     plt.clf()
 
 
-def get_results_by_batch(path: str, heights: float|list = None, rpm_range: list = None):
+def get_results_by_batch(path: str, heights: float|list = None, rpm_range: list = None) -> dict:
     if type(heights) is float or type(heights) is int:
         heights = [heights]
 
