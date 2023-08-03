@@ -161,6 +161,10 @@ class ArdManager:
         target = [0 if i != motor_id else target for i in range(motor_num)]
         self.move(target)
 
+    def stop(self):
+        for arduino in self.adruinos:
+            arduino.stop()
+
     def dump(self, name: str):
         if self.mapping is None:
             raise Exception('(E) ArdManager::dump: no mapping defined.')
@@ -253,13 +257,18 @@ class Arduino:
         while self.is_operating():
             time.sleep(0.2)
 
+    def stop(self):
+        self.write('STOP')
+        while self.is_operating():
+            time.sleep(0.2)
+
     def is_operating(self) -> bool:
         return True in self.get_reading().operating
 
     def get_dev_info(self):
         self.write('IDEN')
         # Getting dev_id means terminating the IDEN call.
-        while not self.dev_id:
+        while self.dev_id is None:
             line = self.readline()
             parsed = line.strip().split()
 
@@ -336,5 +345,5 @@ if __name__ == "__main__":
     ardman = ArdManager()
     while True:
         print(ardman.get_reading())
-        time.sleep(1)
+        time.sleep(0.1)
 

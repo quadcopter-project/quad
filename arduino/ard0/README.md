@@ -15,7 +15,7 @@ It will be capable of the following:
 |---------|-----|
 | 5V      | Vin |
 | GND     | GND |
-| A4      | SNA |
+| A4      | SDA |
 | A5      | SCL |
 
 | Arduino | DM542T-* |
@@ -25,18 +25,18 @@ It will be capable of the following:
 
 | Arduino | DM542T-1 |
 |---------|----------|
-| 2       | DIR+     |
-| 3       | PUL+     |
+| 2       | PUL+     |
+| 3       | DIR+     |
 
 | Arduino | DM542T-2 |
 |---------|----------|
-| 4       | DIR+     |
-| 5       | PUL+     |
+| 4       | PUL+     |
+| 5       | DIR+     |
 
 | Arduino | DM542T-3 |
 |---------|----------|
-| 6       | DIR+     |
-| 7       | PUL+     |
+| 6       | PUL+     |
+| 7       | DIR+     |
 
 | Arduino | HC-SR04 |
 |---------|---------|
@@ -47,8 +47,8 @@ It will be capable of the following:
 |----------|----------|
 | A+       | Red      |
 | A-       | Blue     |
-| B+       | Green    |
-| B-       | Black    |
+| B+       | Black    |
+| B-       | Green    |
 
 | DM542T-* | EP-613 (30V) |
 |----------|--------------|

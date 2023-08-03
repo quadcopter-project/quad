@@ -4,8 +4,8 @@ bool isOperating = false;
 // MOTOR
 #include <AccelStepper.h>
 const int NUM_MOTOR = 3;
-const int PUL_PIN[NUM_MOTOR] = {3, 5, 7};
-const int DIR_PIN[NUM_MOTOR] = {2, 4, 6};
+const int PUL_PIN[NUM_MOTOR] = {2, 4, 6};
+const int DIR_PIN[NUM_MOTOR] = {3, 5, 7};
 
 const int MOTOR_MAX_SPEED = 60;
 const int MOTOR_ACCELERATION = 200;
@@ -282,6 +282,8 @@ inline void report() {
 
 
 void setup() {
+    Serial.begin(230400);   // wasted an hour on this :)
+
     // initiailise the motors.
     for (int i = 0; i < NUM_MOTOR; i++) {
         motor[i] = AccelStepper(AccelStepper::DRIVER, PUL_PIN[i], DIR_PIN[i]);
@@ -291,6 +293,7 @@ void setup() {
     }
 
     // initailise accelerometer.
+    mma.begin();    // and another half an hour on this.
     mma.setRange(MMA8451_RANGE_2_G);
 }
 
@@ -313,6 +316,9 @@ void loop() {
             blockedRun();
             double height = substr_to_double();
             setHeight(height);
+        } else if (strcmp(substr, "STOP") == 0) {
+            stop();
+            blockedRun();
         }
     } 
 

@@ -70,7 +70,7 @@ class Frame:
         mass_vec[0] = (- sin(DEG45) * f[0, 1] + sin(DEG45) * f[0, 2]
                        + cos(DEG15) * f[1, 1] + cos(DEG75) * f[1, 2]
                        - cos(DEG75) * f[2, 1] - cos(DEG15) * f[2, 2])
-        mass_vec[1] = (- cos(DEG45) * f[0, 1] - cos(DEG45) * F[0, 2]
+        mass_vec[1] = (- cos(DEG45) * f[0, 1] - cos(DEG45) * f[0, 2]
                        - sin(DEG15) * f[1, 1] + sin(DEG75) * f[1, 2]
                        - sin(DEG75) * f[2, 1] - sin(DEG15) * f[2, 2])
         mass_vec[2] = sum(f[:, 0])   # z-component adds simply
@@ -101,8 +101,9 @@ class Data:
             peak_freq, peak_ampl = Numerical.sort_peaks(peak_freq, peak_ampl)
 
         # useful for e.g. an unpacked ArdReading.
-        for kw in kwargs.keys():
-            if not hasattr(Frame, kw):
+        dummy_frame = Frame()   # hasattr doesn't work on a class.
+        for kw in list(kwargs.keys()):  # or else, RuntimeError results.
+            if not hasattr(dummy_frame, kw):
                 kwargs.pop(kw)
 
         self.frames.append(Frame(t = t,

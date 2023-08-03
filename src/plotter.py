@@ -146,10 +146,14 @@ class Plotter:
             update_func_name = 'update_' + graph_type
             # fallback to generic functions
             if not hasattr(self, update_func_name):
-                if graph_type.split('_')[-1] == 'vec':
-                    update_func_name = 'update_generic_vec'
-                else:
-                    update_func_name = 'update_generic'
+                graph_subtype = graph_type.split('_')[-1]
+                match graph_subtype:
+                    case 'vec':
+                        update_func_name = 'update_generic_vec'
+                    case 'comp':
+                        update_func_name = 'update_generic_comp'
+                    case _:
+                        update_func_name = 'update_generic'
             
             update_func = getattr(self, update_func_name)
             update_func(graph_id, graph_type, data, window)
@@ -248,7 +252,7 @@ class Plotter:
 
     # TODO: get_mass_comp is not implemented in Data.
     def update_generic_comp(self, graph_id: tuple, graph_type: str, data: Data, window: int = None):
-       get_func_name = 'get_' + graph_type
+       get_func_name = 'get_' + graph_type.replace('comp', 'vec')
        get_func = getattr(data, get_func_name)
        
        t = data.get_t()
