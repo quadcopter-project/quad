@@ -145,9 +145,18 @@ class ArdManager:
         if len(target) != motor_num:
             raise Exception('(E) ArdManager::move: target list does not match number of motors.')
 
+        target_by_dev = dict()
+        # TODO: refactor this so motors on the same device are run at the same time (.move call is blocking.)
         for i in range(motor_num):
             dev_id, comp_id = self.mapping.motor[i]
-            self.arduinos[dev_id].move(comp_id, target[i])
+            if dev_id not in target_by_dev.keys():
+                target_by_dev[dev_id] = dict()
+            target_by_motor = target_by_dev[dev_id]
+            target_by_motor[comp_id] = target[i]
+
+        for dev_id, target_by_motor in target_by_dev.items():
+            target_by_motor = dict(sorted(target_by_motor.items()))     # NOTE: THIS WILL DEREFERENCE target_by_motor.
+            self.arduinos[dev_id].move(target_by_motor.values())
 
         while True:
             reading = self.get_reading()
@@ -155,7 +164,7 @@ class ArdManager:
                 break
             time.sleep(0.5)
 
-    def move_motor(motor_id: int, target: float):
+    def move_motor(self, motor_id: int, target: float):
         # TODO: define get_motor_num function
         motor_num = len(self.mapping.motor)
         target = [0 if i != motor_id else target for i in range(motor_num)]
@@ -249,9 +258,10 @@ class Arduino:
     def write(self, message: str):
         self.dev.write(message.encode())
 
-    def move(self, target: float):
-        steps = int(target / self.ANGLE_PER_STEP)
-        self.write(f'MOVE {motor_id} {steps}')
+    # TODO: add non-blocking move for stop to be useful
+    def move(self, target: list):
+        steps_target = [int(angle / self.ANGLE_PER_STEP) for angle in target]
+        self.write('MOVE ' + " ".join([str(steps) for steps in steps_target]))
         time.sleep(0.5)
         
         while self.is_operating():

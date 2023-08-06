@@ -105,7 +105,7 @@ class Plotter:
     def init_generic_vec(self, graph_id: tuple, graph_type: str):
         row, col = graph_id
         self.axs[row][col].remove()
-        self.axs[row][col] = self.fig.add_subplot(self.nrows + 1, self.ncols + 1,   # the original grid
+        self.axs[row][col] = self.fig.add_subplot(self.nrows, self.ncols,   # the original grid
                                              self.ncols * row + col + 1, projection = '3d') # intended id
         line = self.get_lines(graph_id)
         axis = self.get_axis(graph_id)
@@ -116,7 +116,7 @@ class Plotter:
         lines = self.get_lines(graph_id)
         for i in range(3):  # three components of a vector
             lines.append(axis.plot([], [], label = f'$x_{i}$')[0])
-        axis.legend()
+        axis.legend(loc = 'upper left')
 
     def set_labels(self, graph_id: tuple, graph_type: str):
         axis = self.get_axis(graph_id)
@@ -221,8 +221,9 @@ class Plotter:
         line.set_ydata(y)
         
     def update_generic(self, graph_id: tuple, graph_type: str, data: Data, window: int = None):
-        t = data.get_t()
         get_func = getattr(data, 'get_' + graph_type)
+
+        t = data.get_t()
         val = get_func()
 
         if window is not None:
@@ -238,31 +239,43 @@ class Plotter:
         cur_frame = data.get_frame(-1)
         get_func_name = 'get_' + graph_type
         get_func = getattr(cur_frame, get_func_name) 
+
         vec = get_func()
         
         axis = self.get_axis(graph_id)
         lines = self.get_lines(graph_id)
-        lines[0].remove()
-        lines[0] = axis.quiver(0, 0, 0, *vec)
+        for i in range(len(lines)):
+            lines[i].remove()
+        lines.clear()
+
+        # this way component lines have same colour as that in a "by-component" plot
+        for i in range(3):
+            lines.append(axis.quiver(0, 0, 0, *[vec[j] if j == i else 0 for j in range(3)], color = 'green'))
         
-        lim = max(vec) * 1.5
+        lines.append(axis.quiver(0, 0, 0, *vec))
+
+        lim = max([abs(v) for v in vec]) * 1.5
         axis.set_xlim3d(left = -lim, right = lim)
         axis.set_ylim3d(bottom = -lim, top = lim)
         axis.set_zlim3d(bottom = -lim, top = lim)
 
     # TODO: get_mass_comp is not implemented in Data.
     def update_generic_comp(self, graph_id: tuple, graph_type: str, data: Data, window: int = None):
-       get_func_name = 'get_' + graph_type.replace('comp', 'vec')
-       get_func = getattr(data, get_func_name)
+        get_func_name = 'get_' + graph_type.replace('comp', 'vec')
+        get_func = getattr(data, get_func_name)
        
-       t = data.get_t()
-       vec_list = get_func()    # list of vectors by time.
-       
-       lines = self.get_lines(graph_id)
-       for i in range(3):
-           lines[i].set_xdata(t)
-           lines[i].set_ydata([vec[i] for vec in vec_list])     # i-th component
+        t = data.get_t()
+        vec_list = get_func()    # list of vectors by time.
 
+        if window is not None:
+            t = t[-window:]
+            vec_list = vec_list[-window:]
+
+       
+        lines = self.get_lines(graph_id)
+        for i in range(3):
+            lines[i].set_xdata(t)
+            lines[i].set_ydata([vec[i] for vec in vec_list])     # i-th component
     
     # GET functions (private)
     def get_axis(self, graph_id: tuple):

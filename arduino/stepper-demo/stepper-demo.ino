@@ -46,7 +46,7 @@ AccelStepper library: https://www.airspayce.com/mikem/arduino/AccelStepper/class
 */
 #include <AccelStepper.h>
 
-AccelStepper stepper(AccelStepper::DRIVER, 9, 8);
+AccelStepper stepper(AccelStepper::DRIVER, 2, 3);
 
 void setup()
 {

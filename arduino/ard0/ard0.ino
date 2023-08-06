@@ -120,6 +120,7 @@ inline bool isRunning() {
     for (int i = 0; i < NUM_MOTOR; i++) {
         running |= motor[i].isRunning();
     }
+    return running;
 }
 
 inline void setSpeed(double speed) { for (int i = 0; i < NUM_MOTOR; i++) motor[i].setSpeed(speed); }
@@ -127,9 +128,13 @@ inline void setSpeed(double speed) { for (int i = 0; i < NUM_MOTOR; i++) motor[i
 inline void runSpeed() { for (int i = 0; i < NUM_MOTOR; i++) motor[i].runSpeed(); }
 
 inline void blockedRun() {
+    isOperating = true;
+    report();
     while (isRunning()) {
         run();
     }
+    isOperating = false;
+    report();
 }
 
 /*
@@ -254,9 +259,9 @@ inline void report() {
         // isOperating has overriding authority.
         moving[i] = motor[i].isRunning();
     }
-     
+
     // formatted output
-    Serial.print("{");
+    Serial.print("DAT {");
     
     Serial.print("\"motor\": [");
     Serial.print(moving[0]);
@@ -305,8 +310,13 @@ void loop() {
 
         if (strcmp(substr, "IDEN") == 0) {
             Serial.print("IDEN "); Serial.println(DEV_ID);
-        } else if (strcmp(substr, "MOTOR") == 0) {
-             
+        } else if (strcmp(substr, "MOVE") == 0) {
+            for (int i = 0; i < NUM_MOTOR; i++) {
+                next_substr(substr);
+                long steps = substr_to_int();
+                motor[i].move(steps);
+            }
+            blockedRun();
         } else if (strcmp(substr, "LEVEL") == 0) {
             stop();
             blockedRun();
@@ -314,6 +324,7 @@ void loop() {
         } else if (strcmp(substr, "HEIGHT") == 0) {
             stop();
             blockedRun();
+            next_substr(substr);
             double height = substr_to_double();
             setHeight(height);
         } else if (strcmp(substr, "STOP") == 0) {
@@ -324,5 +335,5 @@ void loop() {
 
     run();
     report();
-
+    delay(20);
 }

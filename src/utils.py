@@ -66,6 +66,8 @@ class Frame:
         DEG45 = pi * 45 / 180
         DEG75 = pi * 75 / 180
 
+        # right-handed coordinate system.
+        # z points upward, x points along middle line towards cells 1-0
         mass_vec = [None for i in range(3)]
         mass_vec[0] = (- sin(DEG45) * f[0, 1] + sin(DEG45) * f[0, 2]
                        + cos(DEG15) * f[1, 1] + cos(DEG75) * f[1, 2]
@@ -73,8 +75,12 @@ class Frame:
         mass_vec[1] = (- cos(DEG45) * f[0, 1] - cos(DEG45) * f[0, 2]
                        - sin(DEG15) * f[1, 1] + sin(DEG75) * f[1, 2]
                        - sin(DEG75) * f[2, 1] - sin(DEG15) * f[2, 2])
-        mass_vec[2] = sum(f[:, 0])   # z-component adds simply
+        mass_vec[2] = -sum(f[:, 0])   # z-component adds simply
         return mass_vec
+
+    # NOTE: some dangerous hardcoding here.
+    def get_accel_vec(self) -> list:
+        return self.accel[0]
 
 
 @dataclass
@@ -140,7 +146,7 @@ class Data:
 
     # NOTE: a dangerous bit of hard coding. frame.accel is returned as a list of lists, representing [x, y, z] of individual sensors.
     def get_accel_vec(self) -> list:
-        return [frame.accel[0] for frame in self.frames]
+        return [frame.get_accel_vec() for frame in self.frames]
 
     # NOTE: same as above, a bit of hardcoding.
     def get_dist(self) -> list:
