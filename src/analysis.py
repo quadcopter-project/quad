@@ -29,9 +29,9 @@ Note, that the reference height h0 is 62.5cm relative to the table surface. and 
 """
 
 
-from utils import Data
+from lib.utils import Data
 from time import sleep
-import processor
+from lib import processor
 
 import os
 import statistics as st

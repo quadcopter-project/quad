@@ -1,4 +1,5 @@
-import drone, time
+import time
+from lib import drone
 
 if __name__ == '__main__':
     quad = drone.Drone('../bf-conf/debug/betaflight-configurator/linux64/betaflight-configurator')
