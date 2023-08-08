@@ -196,15 +196,15 @@ void level() {
         blockedRun();
         getAccel(accel);
         z1 = accel[2];
-        if (z1 <= z) { // TODO: set error tolerance term here.
+        if (z1 < z) { // TODO: set error tolerance term here.
             // this axis is no good, revert.  
-            motor[i].move(LEVEL_TEST_STEP);
+            motor[i].move(-LEVEL_TEST_STEP);
             blockedRun();
         } else {
             motor[i].setSpeed(DOWNWARD_SPEED);
             // routine to maximise z-component.
             // During this process motors only allowed to move the drone downward.
-            while (z1 > z) {
+            while (z1 >= z) {
                 z = z1;
                 runSpeed();
                 delay(20);

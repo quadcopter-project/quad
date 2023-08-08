@@ -272,6 +272,13 @@ class Arduino:
         while self.is_operating():
             time.sleep(0.2)
 
+    def level(self):
+        self.write('LEVEL')
+        time.sleep(0.1)
+        while self.is_operating():
+            time.sleep(0.05)
+            print(self.get_reading())
+
     def is_operating(self) -> bool:
         return True in self.get_reading().operating
 
