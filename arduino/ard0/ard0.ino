@@ -13,24 +13,22 @@ const int MOTOR_ACCELERATION = 200;
 AccelStepper motor[NUM_MOTOR];
 
 // MOTOR algorithm parameters
+const int LEVEL_DOWNWARD_STEP = -2;
+const double DIST_TOLERANCE = 0.2;
+const double ACCEL_TOLERANCE = 0.1; // translates to about 0.6 degs
 const double DOWNWARD_SPEED = -60;
 const double UPWARD_SPEED = 30;
-const int LEVEL_TEST_STEP = -5;
-const double DIST_TOLERANCE = 0.2;
-const double ACCEL_TOLERANCE = 0.03; // translates to about 0.2 degs
 
 // HC-SR04
-#include <NewPing.h>
 const int TRIG_PIN = 8;
 const int ECHO_PIN = 9;
-const int MAX_DISTANCE = 200;
-NewPing sonar(TRIG_PIN, ECHO_PIN, MAX_DISTANCE);
 
 // MMA8451: No config since it needs the I2C bus.
 #include <Wire.h>
 #include "Adafruit_MMA8451.h"
 #include <Adafruit_Sensor.h>
 Adafruit_MMA8451 mma = Adafruit_MMA8451();
+const int ACCEL_MEAN_REPEATS = 5;
 
 // Utitilies for reading and parsing Serial input
 char str[20];
@@ -97,9 +95,27 @@ double substr_to_double() {
 }
 
 
-// sensor functions
-inline double getDistance() { return double(sonar.ping()) / 2 * 0.0343; }
+// Ultrasound HC-SR04 functions
+inline void initDistance() {
+    pinMode(TRIG_PIN, OUTPUT);
+    pinMode(ECHO_PIN, INPUT);
+}
 
+inline double getDistance() {
+    // trigger sensor with a HIGH pulse of 10us
+    digitalWrite(TRIG_PIN, LOW);
+    delayMicroseconds(5);
+    digitalWrite(ECHO_PIN, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(TRIG_PIN, LOW);
+
+    double duration = pulseIn(ECHO_PIN, HIGH); // Time in microseconds
+    double distance_cm = duration / 2 * 0.0343;
+    return distance_cm;
+}
+
+
+// Accelerometer MMA8451 functions
 inline void getAccel(double* accel) {
     mma.read();
     sensors_event_t event;
@@ -107,6 +123,20 @@ inline void getAccel(double* accel) {
     accel[0] = event.acceleration.x;
     accel[1] = event.acceleration.y;
     accel[2] = event.acceleration.z;
+}
+
+inline void getMeanAccel(double* accel) {
+    accel[0] = accel[1] = accel[2] = 0;
+    double _accel[3];
+    for (int i = 0; i < ACCEL_MEAN_REPEATS; i++) {
+        getAccel(_accel);
+        for (int j = 0; j < 3; j++) {
+            accel[j] += _accel[j];
+        }
+    }
+    for (int i = 0; i < 3; i ++) {
+        accel[i] /= ACCEL_MEAN_REPEATS;
+    }
 }
 
 
@@ -132,6 +162,14 @@ inline void blockedRun() {
     report();
     while (isRunning()) {
         run();
+
+        if (Serial.available()) {
+            readline();
+            char substr[20];
+            next_substr(substr);
+            if (strcmp(substr, "STOP")) stop();
+            
+        }
     }
     isOperating = false;
     report();
@@ -187,33 +225,31 @@ void level() {
     report();
 
     double accel[3], z, z1;
-    // TODO: once in a certain order might not be enough. Consider adding a while above tolerance statement.
-    for (int i = 0; i < NUM_MOTOR; i++) {
-        getAccel(accel);
-        z = accel[2];
+    getMeanAccel(accel);
 
-        motor[i].move(LEVEL_TEST_STEP);
-        blockedRun();
-        getAccel(accel);
-        z1 = accel[2];
-        if (z1 < z) { // TODO: set error tolerance term here.
-            // this axis is no good, revert.  
-            motor[i].move(-LEVEL_TEST_STEP);
+    while (accel[0] > ACCEL_TOLERANCE || accel[1] > ACCEL_TOLERANCE) {
+        for (int i = 0; i < NUM_MOTOR; i++) {
+            getMeanAccel(accel);
+            z = accel[2];
+
+            motor[i].move(LEVEL_DOWNWARD_STEP);
             blockedRun();
-        } else {
-            motor[i].setSpeed(DOWNWARD_SPEED);
-            // routine to maximise z-component.
-            // During this process motors only allowed to move the drone downward.
+            getMeanAccel(accel);
+            z1 = accel[2];
+
             while (z1 >= z) {
                 z = z1;
-                runSpeed();
-                delay(20);
+                motor[i].move(LEVEL_DOWNWARD_STEP);
+                blockedRun();
+                getMeanAccel(accel);
                 z1 = accel[2];
-                report();   // TODO: remove this in final version
             }
+            motor[i].move(-LEVEL_DOWNWARD_STEP); // at this point we must have overshot.
+            blockedRun();
         }
+        getMeanAccel(accel);
     }
-
+    
     flushInput();
     isOperating = false | wasOperating;
     report();
@@ -300,6 +336,9 @@ void setup() {
     // initailise accelerometer.
     mma.begin();    // and another half an hour on this.
     mma.setRange(MMA8451_RANGE_2_G);
+
+    // initialise ultrasound sensor.
+    initDistance();
 }
 
 void loop() {
