@@ -74,7 +74,7 @@ class Frame:
                        - cos(DEG75) * f[2, 1] - cos(DEG15) * f[2, 2])
         mass_vec[1] = (- cos(DEG45) * f[0, 1] - cos(DEG45) * f[0, 2]
                        - sin(DEG15) * f[1, 1] + sin(DEG75) * f[1, 2]
-                       - sin(DEG75) * f[2, 1] - sin(DEG15) * f[2, 2])
+                       + sin(DEG75) * f[2, 1] - sin(DEG15) * f[2, 2])
         mass_vec[2] = -sum(f[:, 0])   # z-component adds simply
         return mass_vec
 

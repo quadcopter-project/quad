@@ -335,5 +335,5 @@ void loop() {
 
     run();
     report();
-    delay(20);
+    delay(100);
 }
