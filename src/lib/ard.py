@@ -53,6 +53,9 @@ class ArdManager:
 
         print('ArdManager::__init__: init complete.')
 
+    def __getitem__(self, key):
+        return self.arduinos[key]
+
     # infer mapping from arduino readings: number in order of ascending dev_id and order of sensors in readings
     def gen_mapping(self):
         mapping = self.ArdMapping()
@@ -140,8 +143,12 @@ class ArdManager:
         return self.get_reading().accel[accel_id]
 
     # angle: list of angles to move for each motor.
-    def move(self, target: list):
+    def move(self, target: int|list, block:bool = False):
         motor_num = len(self.mapping.motor)
+
+        if type(target) is int:
+            target = [target] * motor_num
+
         if len(target) != motor_num:
             raise Exception('(E) ArdManager::move: target list does not match number of motors.')
 
@@ -156,13 +163,16 @@ class ArdManager:
 
         for dev_id, target_by_motor in target_by_dev.items():
             target_by_motor = dict(sorted(target_by_motor.items()))     # NOTE: THIS WILL DEREFERENCE target_by_motor.
-            self.arduinos[dev_id].move(target_by_motor.values())
+            # do not block here, so we can start all motors now and block only when they are running.
+            self.arduinos[dev_id].move(target_by_motor.values(), block = False)
 
-        while True:
-            reading = self.get_reading()
-            if True not in reading.motor:
-                break
-            time.sleep(0.5)
+        if block:
+            time.sleep(1)
+            while True:
+                reading = self.get_reading()
+                if True not in reading.motor:
+                    break
+                time.sleep(0.5)
 
     def move_motor(self, motor_id: int, target: float):
         # TODO: define get_motor_num function
@@ -223,8 +233,6 @@ class Arduino:
 
     line: str = ""
 
-    ANGLE_PER_STEP: float = 1.8
-
     def __init__(self, port:str, baud:int = 230400):
         self.port = port
         self.baud = baud
@@ -262,14 +270,14 @@ class Arduino:
     def write(self, message: str):
         self.dev.write((message + '\n').encode())
 
-    # TODO: add non-blocking move for stop to be useful
-    def move(self, target: list):
-        steps_target = [int(angle / self.ANGLE_PER_STEP) for angle in target]
-        self.write('MOVE ' + " ".join([str(steps) for steps in steps_target]))
-        time.sleep(0.5)
+    # move by number of steps in block
+    def move(self, target: list, block: bool = False):
+        self.write('MOVE ' + " ".join([str(steps) for steps in target]))
         
-        while self.is_operating():
-            time.sleep(0.2)
+        if block:
+            time.sleep(1)
+            while self.is_operating():
+                time.sleep(0.2)
 
     def stop(self):
         self.write('STOP')

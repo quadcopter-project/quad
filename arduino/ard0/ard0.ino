@@ -312,7 +312,6 @@ inline void report() {
     // motor
     bool moving[NUM_MOTOR];
     for (int i = 0; i < NUM_MOTOR; i++) {
-        // isOperating has overriding authority.
         moving[i] = motor[i].isRunning();
     }
 
