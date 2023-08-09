@@ -230,10 +230,13 @@ class Arduino:
         self.baud = baud
         self.open(port, baud = baud) 
         self.reset()
+
         self.get_dev_info()
+        self.line = self.readline() # populate a first line
+
         self.thread = Thread(target=self.worker)
         self.thread.start()
-        time.sleep(1)   # for the first line to be populated
+
         print(f'Arduino::__init__: initialised arduino #{self.dev_id} on {self.port}.')
 
     def open(self, port:str, baud = 230400):
@@ -255,8 +258,9 @@ class Arduino:
         # without this the first self.write will likely not reach the arduino.
         time.sleep(2)
 
+    # write a line to Arduino.
     def write(self, message: str):
-        self.dev.write(message.encode())
+        self.dev.write((message + '\n').encode())
 
     # TODO: add non-blocking move for stop to be useful
     def move(self, target: list):

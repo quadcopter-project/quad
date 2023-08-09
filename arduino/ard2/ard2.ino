@@ -20,14 +20,12 @@ int pos = 0;
 
 void readline() {
     len = sublen = pos = 0;
-    while (Serial.available()) {
-        char ch = Serial.read();
-        if (ch == '\n') {
-            str[len] = '\0';
-            break;
-        }
+    char ch = Serial.read();
+    while (ch != '\n') {
         str[len++] = ch;
+        ch = Serial.read();
     }
+    str[len] = '\0';
 }
 
 void next_substr(char* _substr) {

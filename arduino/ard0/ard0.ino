@@ -7,15 +7,18 @@ const int NUM_MOTOR = 3;
 const int PUL_PIN[NUM_MOTOR] = {2, 4, 6};
 const int DIR_PIN[NUM_MOTOR] = {3, 5, 7};
 
-const int MOTOR_MAX_SPEED = 60;
+const int MOTOR_MAX_SPEED = 200;
 const int MOTOR_ACCELERATION = 200;
 
 AccelStepper motor[NUM_MOTOR];
 
 // MOTOR algorithm parameters
-const int LEVEL_DOWNWARD_STEP = -2;
-const double DIST_TOLERANCE = 0.2;
+// level parameters
+const int STARTING_DOWNWARD_STEP = 200;
+const int MIN_DOWNWARD_STEP = 25;
 const double ACCEL_TOLERANCE = 0.1; // translates to about 0.6 degs
+// setHeight parameters
+const double DIST_TOLERANCE = 0.2;
 const double DOWNWARD_SPEED = -60;
 const double UPWARD_SPEED = 30;
 
@@ -28,7 +31,8 @@ const int ECHO_PIN = 9;
 #include "Adafruit_MMA8451.h"
 #include <Adafruit_Sensor.h>
 Adafruit_MMA8451 mma = Adafruit_MMA8451();
-const int ACCEL_MEAN_REPEATS = 5;
+const int ACCEL_MEAN_REPEATS = 3;
+const int ACCEL_DELAY = 500;    // so that system can settle down.
 
 // Utitilies for reading and parsing Serial input
 char str[20];
@@ -39,14 +43,12 @@ int pos = 0;
 
 void readline() {
     len = sublen = pos = 0;
-    while (Serial.available()) {
-        char ch = Serial.read();
-        if (ch == '\n') {
-            str[len] = '\0';
-            break;
-        }
+    char ch = Serial.read();
+    while (ch != '\n') {
         str[len++] = ch;
+        ch = Serial.read();
     }
+    str[len] = '\0';
 }
 
 void next_substr(char* _substr) {
@@ -126,6 +128,7 @@ inline void getAccel(double* accel) {
 }
 
 inline void getMeanAccel(double* accel) {
+    delay(ACCEL_DELAY);
     accel[0] = accel[1] = accel[2] = 0;
     double _accel[3];
     for (int i = 0; i < ACCEL_MEAN_REPEATS; i++) {
@@ -220,33 +223,50 @@ void _setHeight(double lim) {
 }
 
 void level() {
-    bool wasOperating = isOperating;    // in case level was called by another function that "operates."
+    bool wasOperating = isOperating;
     isOperating = true;
     report();
 
-    double accel[3], z, z1;
+    double accel[3], xy, xy1;
     getMeanAccel(accel);
 
-    while (accel[0] > ACCEL_TOLERANCE || accel[1] > ACCEL_TOLERANCE) {
+    int downward_step = STARTING_DOWNWARD_STEP;
+    bool success_flag = false;
+
+    while ((abs(accel[0]) > ACCEL_TOLERANCE || abs(accel[1]) > ACCEL_TOLERANCE)) {
         for (int i = 0; i < NUM_MOTOR; i++) {
             getMeanAccel(accel);
-            z = accel[2];
+            xy = sq(accel[0]) + sq(accel[1]);
 
-            motor[i].move(LEVEL_DOWNWARD_STEP);
+            motor[i].move(-downward_step);
             blockedRun();
             getMeanAccel(accel);
-            z1 = accel[2];
+            xy1 = sq(accel[0]) + sq(accel[1]);
 
-            while (z1 >= z) {
-                z = z1;
-                motor[i].move(LEVEL_DOWNWARD_STEP);
+            while (xy1 <= xy) {
+                // only require this while statement to be executed once to show we still have space for optimisation at larger step.
+                success_flag = true;
+                xy = xy1;
+                motor[i].move(-downward_step);
                 blockedRun();
                 getMeanAccel(accel);
-                z1 = accel[2];
+                xy1 = sq(accel[0]) + sq(accel[1]);
             }
-            motor[i].move(-LEVEL_DOWNWARD_STEP); // at this point we must have overshot.
+            motor[i].move(downward_step); // at this point we must have overshot.
             blockedRun();
         }
+    
+        // finer accuracy required.
+        if (!success_flag) downward_step /= 2;
+
+        // didn't work, give it a kick and retry.
+        if (downward_step < MIN_DOWNWARD_STEP) {
+            motor[random(0, 3)].move(random(200, 400));
+            blockedRun();
+            downward_step = STARTING_DOWNWARD_STEP;
+        }
+
+        success_flag = false;
         getMeanAccel(accel);
     }
     
@@ -339,6 +359,9 @@ void setup() {
 
     // initialise ultrasound sensor.
     initDistance();
+
+    // initialise RNG with noise
+    randomSeed(analogRead(0));
 }
 
 void loop() {
