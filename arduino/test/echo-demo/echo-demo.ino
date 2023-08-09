@@ -23,10 +23,10 @@ inline double getDistance() {
 
 void setup() {
     initDistance();
-    Serial.begin(9600);
+    Serial.begin(230400);
 }
 
 void loop() {
     Serial.println(getDistance());
-    delay(100);
+    delay(200);
 }
