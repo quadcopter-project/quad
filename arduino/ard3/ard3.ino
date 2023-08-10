@@ -11,8 +11,9 @@ const double CALIB_FACTOR[NUM_CELLS] = {-17224.68, 16637.73, -16851.23};
 HX711 scales[NUM_CELLS];
 
 // Utitilies for reading and parsing Serial input
-char str[20];
-char substr[20];
+const int MAX_STR_LEN = 50;
+char str[MAX_STR_LEN];
+char substr[MAX_STR_LEN];
 int len = 0;
 int sublen = 0;
 int pos = 0;

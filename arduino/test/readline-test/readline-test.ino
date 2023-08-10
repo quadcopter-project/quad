@@ -1,4 +1,4 @@
-char str[20], substr[20];
+char str[40], substr[40];
 int len = 0;
 int sublen = 0;
 int pos = 0;

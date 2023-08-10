@@ -35,8 +35,9 @@ const int ACCEL_MEAN_REPEATS = 3;
 const int ACCEL_DELAY = 500;    // so that system can settle down.
 
 // Utitilies for reading and parsing Serial input
-char str[20];
-char substr[20];
+const int MAX_STR_LEN = 50;
+char str[MAX_STR_LEN];
+char substr[MAX_STR_LEN];
 int len = 0;
 int sublen = 0;
 int pos = 0;
