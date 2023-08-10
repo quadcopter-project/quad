@@ -1,4 +1,5 @@
-import utils, drone, time
+import time
+from lib import drone, utils
 
 if __name__ == '__main__':
     ard = utils.Arduino()

@@ -1,12 +1,13 @@
-const int DEV_ID = 1;
+const int DEV_ID = 2;
 bool isOperating = false;
 
 // Load cell
 #include "HX711.h"
-const int NUM_CELLS = 3;
+const int NUM_CELLS = 6;
 const int LOADCELL_DOUT_PIN_0 = 3;
 const int LOADCELL_SCK_PIN_0 = 2;
-const double CALIB_FACTOR[NUM_CELLS] = {4321.850, 4255.468, 4159.483};
+// Load cell set 2-0 and 2-1 respectively
+const double CALIB_FACTOR[NUM_CELLS] = {4305.175, 4193.374, 4394.816, 4233.086, 4398.276, 4434.782};
 
 HX711 scales[NUM_CELLS];
 

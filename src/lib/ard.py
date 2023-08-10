@@ -4,9 +4,14 @@ null value return on disconnect state is scrapped. It now assumes that device is
 """
 
 import serial, json, os, time
+import serial.tools.list_ports
+import numpy as np
+
 from dataclasses import dataclass, field, asdict
 from threading import Thread
-import serial.tools.list_ports
+from numpy import array
+from numpy.linalg import norm
+
 
 @dataclass
 class ArdReading:
@@ -14,6 +19,9 @@ class ArdReading:
     dist: list = field(default_factory = list)
     mass: list = field(default_factory = list)
     motor: list = field(default_factory = list)
+    # a pseudo-list. Arduino will only ever return list of one value indictaing its state.
+    # However, this helps keep the code free of special cases
+    operating: list = field(default_factory = list)
 
     def load(self, output_dict: dict):
         for key, value in output_dict.items():
@@ -24,19 +32,16 @@ class ArdReading:
 class ArdManager:
     arduinos: dict = dict()  # list of Arduino objects. dev_id -> arduino
     mapping = None
-    COMPONENTS = ['accel', 'dist', 'mass', 'motor']
 
-    # TODO: deprecate, then remove timeout.
-    def __init__(self, baud:int = 230400, timeout:float = None, config_name: str = None):
+    def __init__(self, baud:int = 230400, config_name: str = None):
         self.ports = list(serial.tools.list_ports.grep('0043'))  # filter for arduino devices by their PID
         print(f'ArdManager::__init__: found {len(self.ports)} Arduinos.')
         for port in self.ports:
             print(f'ArdManager::__init__: initialising {port.description} on {port.device}.')
-            ard = Arduino(port.device, baud, timeout)
+            ard = Arduino(port.device, baud)
             self.arduinos[ard.dev_id] = ard 
 
         self.arduinos = dict(sorted(self.arduinos.items()))
-        print(self.arduinos)
 
         # this is for the workers to be properly initialised.
         time.sleep(2)
@@ -48,6 +53,9 @@ class ArdManager:
 
         print('ArdManager::__init__: init complete.')
 
+    def __getitem__(self, key):
+        return self.arduinos[key]
+
     # infer mapping from arduino readings: number in order of ascending dev_id and order of sensors in readings
     def gen_mapping(self):
         mapping = self.ArdMapping()
@@ -57,11 +65,12 @@ class ArdManager:
             
             for comp, values in asdict(reading).items():
                 comp_map = getattr(mapping, comp)
-                print(comp_map)
-                comp_map.extend([ (dev_id, comp_id) for comp_id in range(len(values)) ])
+                # would have used tuples but json parses them to lists, so use lists for consistency.
+                comp_map.extend([ [dev_id, comp_id] for comp_id in range(len(values)) ])
 
         self.mapping = mapping
 
+    # adjust mapping of load cells & motors
     def customise_mapping(self):
         old_mapping = self.mapping
         new_mapping = self.ArdMapping()
@@ -80,7 +89,7 @@ class ArdManager:
             new_id = ''
             while True:
                 input(f'Motor {i} will now move 90 degrees. Confirm: ')
-                self.arduinos[dev_id].move_motor(motor_id, 90)
+                self.arduinos[dev_id].move(motor_id, 90)
                 new_id = input('Assign new id to this motor: ')
                 if not new_id.isnumeric():
                     print('Invalid input.')
@@ -100,7 +109,7 @@ class ArdManager:
             print('Push / pull on the load cell to be assigned new id {i}.')
             old_id = None
             while True:
-                mass = self.get_reading().mass   #TODO: NOT IMPLEMENTED YET
+                mass = self.get_reading().mass
                 for i in range(len(mass)):
                     if abs(mass[i]) > 50:
                         old_id = i
@@ -110,7 +119,7 @@ class ArdManager:
                 time.sleep(0.5)
             new_mapping.mass[i] = old_mapping.mass[old_id]
 
-        # overriding sub-entried, as new_mapping.accel and new_mapping.dist are still [None].
+        # overriding sub-entries, as new_mapping.accel and new_mapping.dist are still [None].
         old_mapping.motor = new_mapping.motor
         old_mapping.mass = new_mapping.mass
 
@@ -118,8 +127,7 @@ class ArdManager:
         reading = ArdReading()
         dev_reading = {dev_id: arduino.get_reading() for dev_id, arduino in self.arduinos.items()}
 
-        for comp in self.COMPONENTS:
-            comp_map = getattr(self.mapping, comp)
+        for comp, comp_map in asdict(self.mapping).items():
             comp_reading = getattr(reading, comp) 
             # put readings in according to id order
             for dev_id, comp_id in comp_map:
@@ -128,23 +136,53 @@ class ArdManager:
 
         return reading
 
-    # angle: list of angles to move for each motor.
-    # TODO: use AccelStepper on Arduino and has it report motor moving status, so we can move multiple motors simultaneously
-    def move_motor(self, target: list, block:bool = True):
-        motor_num = len(self.mapping.motor)
-        if len(target) != motor_num:
-            raise Exception('(E) ArdManager::move_motor: target list does not match number of motors.')
+    def get_mass(self) -> list:
+        return self.get_reading().mass
 
+    def get_accel(self, accel_id: int = 0) -> list:
+        return self.get_reading().accel[accel_id]
+
+    # angle: list of angles to move for each motor.
+    def move(self, target: int|list, block:bool = False):
+        motor_num = len(self.mapping.motor)
+
+        if type(target) is int:
+            target = [target] * motor_num
+
+        if len(target) != motor_num:
+            raise Exception('(E) ArdManager::move: target list does not match number of motors.')
+
+        target_by_dev = dict()
+        # TODO: refactor this so motors on the same device are run at the same time (.move call is blocking.)
         for i in range(motor_num):
             dev_id, comp_id = self.mapping.motor[i]
-            self.arduinos[dev_id].move_motor(comp_id, target[i])
+            if dev_id not in target_by_dev.keys():
+                target_by_dev[dev_id] = dict()
+            target_by_motor = target_by_dev[dev_id]
+            target_by_motor[comp_id] = target[i]
+
+        for dev_id, target_by_motor in target_by_dev.items():
+            target_by_motor = dict(sorted(target_by_motor.items()))     # NOTE: THIS WILL DEREFERENCE target_by_motor.
+            # do not block here, so we can start all motors now and block only when they are running.
+            self.arduinos[dev_id].move(target_by_motor.values(), block = False)
 
         if block:
+            time.sleep(1)
             while True:
                 reading = self.get_reading()
                 if True not in reading.motor:
                     break
                 time.sleep(0.5)
+
+    def move_motor(self, motor_id: int, target: float):
+        # TODO: define get_motor_num function
+        motor_num = len(self.mapping.motor)
+        target = [0 if i != motor_id else target for i in range(motor_num)]
+        self.move(target)
+
+    def stop(self):
+        for arduino in self.adruinos:
+            arduino.stop()
 
     def dump(self, name: str):
         if self.mapping is None:
@@ -164,6 +202,7 @@ class ArdManager:
         dist: list = field(default_factory = list)
         mass: list = field(default_factory = list)   # motor id -> (dev_id, #motor_output)
         motor: list = field(default_factory = list)
+        operating: list = field(default_factory = list)
 
         def dump(self, name):
             if os.path.isfile(name):
@@ -179,14 +218,13 @@ class ArdManager:
                 mapping_json = file.read()
                 mapping_dict = json.loads(mapping_json)
 
-                for key, value in mapping_dict.items():
-                    if hasattr(self, key):
-                        setattr(self, key, value)
+                for comp, comp_map in mapping_dict.items():
+                    if hasattr(self, comp):
+                        setattr(self, comp, comp_map)
 
 
 class Arduino:
     conn: bool = False
-    moving: bool = False
 
     baud: int = None
     port: str = None
@@ -195,19 +233,22 @@ class Arduino:
 
     line: str = ""
 
-    ANGLE_PER_STEP: float = 1
-
-    # NOTE: change of timeout is allowed, but unexpected behaviour might result, eg in move_motor.
-    def __init__(self, port:str, baud = 230400, timeout = None):
-        self.open(port, baud = baud, timeout = timeout) 
+    def __init__(self, port:str, baud:int = 230400):
+        self.port = port
+        self.baud = baud
+        self.open(port, baud = baud) 
         self.reset()
+
         self.get_dev_info()
+        self.line = self.readline() # populate a first line
+
         self.thread = Thread(target=self.worker)
         self.thread.start()
-        print('Arduino::__init__: initialised.')
 
-    def open(self, port:str, baud = 230400, timeout = None):
-        self.dev = serial.Serial(port, baudrate = baud, timeout=timeout)
+        print(f'Arduino::__init__: initialised arduino #{self.dev_id} on {self.port}.')
+
+    def open(self, port:str, baud = 230400):
+        self.dev = serial.Serial(port, baudrate = baud, timeout = None)
         self.port = port
         self.baud = baud
         self.conn = True
@@ -225,27 +266,48 @@ class Arduino:
         # without this the first self.write will likely not reach the arduino.
         time.sleep(2)
 
+    # write a line to Arduino.
     def write(self, message: str):
-        self.dev.write(message)
+        self.dev.write((message + '\n').encode())
 
-    def move_motor(self, target: float):  # make new variable to make sure this completes before new command is issued
-        steps = int(target / self.ANGLE_PER_STEP)
-        self.write(f'MOVE {motor_id} {steps}')
+    # move by number of steps in block
+    def move(self, target: list, block: bool = False):
+        self.write('MOVE ' + " ".join([str(steps) for steps in target]))
+        
+        if block:
+            time.sleep(1)
+            while self.is_operating():
+                time.sleep(0.2)
+
+    def stop(self):
+        self.write('STOP')
+        while self.is_operating():
+            time.sleep(0.2)
+
+    def level(self):
+        self.write('LEVEL')
+        time.sleep(0.1)
+        while self.is_operating():
+            time.sleep(0.05)
+            print(self.get_reading())
+
+    def is_operating(self) -> bool:
+        return True in self.get_reading().operating
 
     def get_dev_info(self):
-        self.write(b'INFO')
-        while not self.dev_id:
+        self.write('IDEN')
+        # Getting dev_id means terminating the IDEN call.
+        while self.dev_id is None:
             line = self.readline()
             parsed = line.strip().split()
 
             cmd = parsed[0]
             param = parsed[1:]
             match cmd:
+                case 'CALIB':
+                    self.calib_factor = [float(val) for val in param] 
                 case 'IDEN':
                     self.dev_id = int(param[0]) 
-            
-        if not self.dev_id:
-            raise IOError('(E) Arduino::get_dev_info: unable to fetch Arduino information in 5 lines.')
 
     def worker(self):
         while True:
@@ -255,7 +317,7 @@ class Arduino:
 
             self.line = self.readline()
 
-    def readline(self) -> str:  # TODO: Transform this into a blocking call by removing timeout
+    def readline(self) -> str:
         line = self.dev.readline().decode('ascii').strip()
         return line
 
@@ -266,19 +328,51 @@ class Arduino:
         cmd = parsed[0] 
         if cmd != 'DAT':
             print(f'(E) Arduino::get_reading: line is of type {cmd}, cannot parse to output data.')
+            print(self.line)
             return None
 
         output_json = parsed[1]
         output_dict = json.loads(output_json)
-        readings = ArdReading()
-        readings.load(output_dict)
-        return readings
-        
-    # TODO: Rewrite this with new apis
-    def calibrate(self, ind: int, ref_mass: float) -> float:
-        pass
+        reading = ArdReading()
+        reading.load(output_dict)
+        return reading
 
-ardman = ArdManager()
-while True:
-    print(ardman.get_reading())
+    # BLOCKING CALL. 
+    def tare(self):
+        self.write('TARE')
+        time.sleep(0.5)
+        while self.is_operating():
+            time.sleep(0.2)
+        
+    # TODO: Not finished yet. Also need to add code to obtain calib_factor in get_dev_info
+    def calibrate(self, cell_id: int, ref_mass: float):
+        MASS_TOLERANCE: float = 0.01
+        print(f'Arduino::calibrate: calibrating cell {cell_id} on device {self.dev_id}. ref_mass = {ref_mass}g.')
+        input('Confirm balance taring: ')
+        self.tare()
+        input('Put standard mass on: ')
+        time.sleep(2)
+        
+        t = time.time()
+        mass = list()
+
+        # get mass reading for 20s
+        while (time.time() - t < 20):
+            mass_reading = self.get_reading().mass[cell_id]
+            mass.append(mass_reading)
+            time.sleep(0.2)
+            print(f'{mass_reading}g')
+            
+        mean_mass = sum(mass) / len(mass)
+        print(f'average {mean_mass}')
+        new_factor = self.calib_factor[cell_id] * (mean_mass / ref_mass)
+
+        print(f'Suggested new factor: {new_factor}. Update that in Arduino source.')
+
+
+if __name__ == "__main__":
+    ardman = ArdManager()
+    while True:
+        print(ardman.get_reading())
+        time.sleep(0.1)
 

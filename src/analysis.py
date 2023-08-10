@@ -2,7 +2,7 @@
 analysis.py
 
 EXPERIMENTAL METHOD
-At present, this is used for analysing the snaptain results using w2_normalisation in utils::Processor.
+At present, this is used for analysing the snaptain results using w2_normalisation in utils::processor.
 
 First, a one-minute recording is made with live-snaptain.py. There, we first keep the drone off,
 run the script to initialise everything, then after typing in the filename the program will prompt for one to confirm.
@@ -29,40 +29,44 @@ Note, that the reference height h0 is 62.5cm relative to the table surface. and 
 """
 
 
-from utils import Data, Processor
-import matplotlib.pyplot as plt
+from lib.utils import Data
 from time import sleep
-
-import statistics as st
-import numpy as np
+from lib import processor
 
 import os
+import statistics as st
+import numpy as np
+import matplotlib.pyplot as plt
 
 from tkinter import Tk
 from tkinter.filedialog import askopenfilename
 
-def gen_w2_norm_plots():
-    raw_dir = '../raw/snap/07-14'
-    for filename in os.listdir(raw_dir):
-        name = os.path.join(raw_dir, filename)
+def gen_w2_norm_plots(path: str):
+    for filename in os.listdir(path):
+        name = os.path.join(path, filename)
         if not os.path.isfile(name) or filename.split('.')[-1] != 'json':
             continue
         print(f'plotting {name}')
-        fig = os.path.join(raw_dir, 'w2-norm-plots', filename.replace('json', 'pdf'))
-        Processor.w2_norm_plot(name, fig, fl = 680, fr = 820)
+        fig = os.path.join(path, 'w2-norm-plots', filename.replace('json', 'pdf'))
+        processor.w2_norm_plot(name, fig, fl = 680, fr = 820)
 
-# TODO: make these paths into variables. Same for above.
-def gen_bin_by_w_plot():
-    Processor.bin_by_w_plot('../raw/snap/07-14/', np.linspace(700, 810, 7), fig = '../raw/snap/07-14/bin-plot.pdf')
+def gen_bin_by_w_plot(path: str):
+    fig = os.path.join(path, 'bin-plot.pdf')
+    processor.bin_by_w_plot(path, np.linspace(700, 810, 7), fig = fig)
 
-def gen_rpm2_lift_plot():
-    Processor.rpm2_lift_plot('../raw/bf/', fig = '../raw/bf/lift-w.pdf', fig2 = '../raw/bf/cl-height.pdf', rpm_range = [0, 7300])
+def gen_w2_norm_height_plot(path):
+    fig = os.path.join(path, 'cl-height.pdf')
+    processor.w2_norm_height_plot(path, fig = fig, fl = 680, fr = 820)
 
-def gen_w2_norm_height_plot():
-    Processor.w2_norm_height_plot('../raw/snap/07-14/', fig = '../raw/snap/07-14/cl-height.pdf', fl = 680, fr = 820)
+def gen_rpm2_lift_plot(path: str):
+    fig = os.path.join(path, 'lift-w.pdf')
+    fig2 = os.path.join(path, 'cl-height.pdf')
+    processor.rpm2_lift_plot(path, fig = fig, fig2 = fig2, rpm_range = [0, 7300])
 
-def gen_3d_plot():
-    Processor.rpm_height_3d_plot('../raw/bf', fig = '../raw/bf/3d.pdf')
+def gen_3d_plot(path: str):
+    fig = os.path.join(path, '3d.pdf')
+    processor.rpm_height_3d_plot(path, fig = fig)
 
 if __name__ == '__main__':
-    gen_rpm2_lift_plot()
+    path = '../raw/bf/setup-1/'
+    gen_3d_plot(path)

@@ -1,4 +1,4 @@
-const int DEV_ID = 1;
+const int DEV_ID = 3;
 bool isOperating = false;
 
 // Load cell
@@ -6,7 +6,7 @@ bool isOperating = false;
 const int NUM_CELLS = 3;
 const int LOADCELL_DOUT_PIN_0 = 3;
 const int LOADCELL_SCK_PIN_0 = 2;
-const double CALIB_FACTOR[NUM_CELLS] = {4321.850, 4255.468, 4159.483};
+const double CALIB_FACTOR[NUM_CELLS] = {-17224.68, 16637.73, -16851.23};
 
 HX711 scales[NUM_CELLS];
 
