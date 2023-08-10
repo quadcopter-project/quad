@@ -7,10 +7,8 @@ arduino = serial.Serial('/dev/ttyACM0', baudrate=230400)
 while True:
     input('begin reading: ')
 
-    arduino.setDTR(False)
-    sleep(1)
     arduino.reset_input_buffer()
-    arduino.setDTR(True)
+    sleep(1)
 
     reading = list()
     t = time()
