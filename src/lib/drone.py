@@ -5,6 +5,8 @@ from twisted.internet import reactor
 from autobahn.twisted.websocket import WebSocketServerFactory
 
 
+# makes use of websocket to communicate with patched betaflight-configurator,
+# its control of RPM wrapped and abstracted.
 class Drone:
     NUM_OF_MOTORS:int = 4 
     MIN_THROTTLE:int = 1000
@@ -16,46 +18,9 @@ class Drone:
     power = None
     target = [0] * NUM_OF_MOTORS # rpm target
     rpm_control_on = False # rpm_worker only responds when this is set to True.
-    conn = False    # connectivity to betaflight app 
+    conn = False    # connectivity to betaflight-configurator 
     rpm_thread = None
 
-    def __init__(self, path:str = None, port: int = 3000):
-        self.socket_init(port)
-        self.launch_betaflight(path)
-
-        # wait for connection to be established
-        while not self.conn:
-           time.sleep(1) 
-
-        print('Drone::__init__: init complete.')
-
-    def socket_init(self, port:int = 3000):
-        self.port = port
-    #    self.reply = 'ACK'
-        
-        # also a bad idea to overwrite the __init__ here
-        # because that __init__ does weird ass shit.
-        self.factory = WebSocketServerFactory()
-
-        # here the protocol class is passed in
-        # not the instance - so can't pass in out_self at this stage.
-        self.factory.protocol = self.ServerProtocol
-
-        # but we can manually add variables...!
-        self.factory.out_self = self
-                
-        self.socket_thread = Thread(target=self.socket_worker)
-        self.socket_thread.start()
-
-    def socket_worker(self):
-        reactor.listenTCP(self.port, self.factory)
-
-        # installSignalHandlers required for reactor to run on another thread.
-        # https://stackoverflow.com/questions/12917980/non-blocking-server-in-twisted
-        reactor.run(installSignalHandlers = False)
-
-    # basic docs of Autobahn / WebSocketServerProtocol, see
-    # https://autobahn.readthedocs.io/en/latest/websocket/programming.html
     class ServerProtocol(WebSocketServerProtocol):
         # try not to overload __init__, in which the protocol may do weird stuff.
         connections = list()
@@ -115,6 +80,60 @@ class Drone:
             for c in set(self.connections):
                 reactor.callFromThread(self.sendMessage, c, payload)
 
+    def __init__(self, path:str = None, port: int = 3000):
+        self.socket_init(port)
+        self.launch_betaflight(path)
+
+        # wait for connection to be established
+        while not self.conn:
+           time.sleep(1) 
+
+        print('Drone::__init__: init complete.')
+
+    def socket_init(self, port:int = 3000):
+        self.port = port
+        
+        # also a bad idea to overwrite the __init__ here
+        # because that __init__ does weird ass shit.
+        self.factory = WebSocketServerFactory()
+
+        # here the protocol class is passed in
+        # not the instance - so can't pass in out_self at this stage.
+        self.factory.protocol = self.ServerProtocol
+
+        # but we can manually add variables...!
+        self.factory.out_self = self
+                
+        self.socket_thread = Thread(target=self.socket_worker)
+        self.socket_thread.start()
+
+    def socket_worker(self):
+        reactor.listenTCP(self.port, self.factory)
+
+        # installSignalHandlers required for reactor to run on another thread.
+        # https://stackoverflow.com/questions/12917980/non-blocking-server-in-twisted
+        reactor.run(installSignalHandlers = False)
+
+    def send(self, data):
+        self.ServerProtocol.send(data)
+
+    # quiet: redirect betaflight-configurator STDERR to /dev/null.
+    # NOTE: THIS WILL BREAK ON WINDOWS.
+    def launch_betaflight(self, path: str = None, quiet:bool = True):
+        self.path = path
+        if not path:
+            return
+        
+        param = '&'
+        if quiet:
+            param = '> /dev/null 2>&1 &'
+
+        os.system(path + " " + param)
+
+    def close(self):
+        self.set_rpm_worker_on(False)
+        self.set_arming(False)
+
     def set_arming(self, armed:bool = False, block = True):
         if not armed:
             self.set_rpm_worker_on(False)
@@ -143,6 +162,7 @@ class Drone:
         throttle_string = " ".join([str(val) for val in self.throttle])
         self.send(f'SET {throttle_string}')
 
+    # throttle: int will set all motors to the same throttle
     def set_throttle(self, throttle:int|list):
         # int, then assume same throttle for all
         if type(throttle) is int:
@@ -151,14 +171,6 @@ class Drone:
         for i in range(len(throttle)):
             self.set_throttle_for_motor(i, throttle[i])
 
-    def set_rpm(self, target:int|list):
-        # Understand int as setting all motors
-        if type(target) is int:
-            target = [target] * self.NUM_OF_MOTORS
-
-        for i in range(len(target)):
-            self.set_rpm_for_motor(i, target[i])
-    
     # only function that accesses self.target directly 
     def set_rpm_for_motor(self, ind:int, target:int):
         if (ind > self.NUM_OF_MOTORS):
@@ -167,6 +179,16 @@ class Drone:
 
         self.target[ind] = target
 
+    # target: int will set all motors to the same rpm.
+    def set_rpm(self, target:int|list):
+        if type(target) is int:
+            target = [target] * self.NUM_OF_MOTORS
+
+        for i in range(len(target)):
+            self.set_rpm_for_motor(i, target[i])
+
+    # start / stop rpm_worker in its own thread.
+    # must be called explicitly for rpm control to take over.
     def set_rpm_worker_on(self, on = False):
         if (not on):
             # signal the worker to quit
@@ -189,7 +211,6 @@ class Drone:
                 self.rpm_thread = Thread(target = self.rpm_worker)
                 self.rpm_thread.start()
 
-    # TODO: NOT SAFE. SET A MAX VALUE
     def rpm_worker(self):
         print('Drone::rpm_worker: started.')
         while True:
@@ -231,28 +252,18 @@ class Drone:
     def get_avg_rpm(self) -> float:
         return sum(self.rpm[:self.NUM_OF_MOTORS]) / self.NUM_OF_MOTORS
 
-    def send(self, data):
-        self.ServerProtocol.send(data)
-
-    def launch_betaflight(self, path: str = None, quiet:bool = True):
-        self.path = path
-        if not path:
-            return
-        
-        param = '&'
-        if quiet:
-            param = '> /dev/null 2>&1 &'
-
-        os.system(path + " " + param)
-
-    def close(self):
-        self.set_rpm_worker_on(False)
-        self.set_arming(False)
-        
+       
     def get_rpm(self) -> list:
         return self.rpm 
 
 
+# PRIVATE testing methods; will break if called outside this scope (bf object not initialsed).
+def test_switch():
+    print('TESTING SWITCH...')
+    bf.set_arming(True)
+    time.sleep(5)
+    bf.set_arming(False)
+        
 def test_throttle():
     print('TESTING THROTTLE CONTROL...')
     print('test set_throttle(list)')
@@ -280,11 +291,6 @@ def test_rpm():
     print('rpm_worker off: motors should keep spinning at same throttle.')
     time.sleep(10)
 
-    # TODO: ADD TIMER IN RPM_WORKER TO MAINTAIN FOR A FEW SECONDS
-    # TODO: SET MAXIMUM VALUE FOR THROTTLE
-    # TODO: DESIGN CHOICE FOR set_rpm: Does it clear original targets?
-    #       do we want that to happen in set_rpm, or when rpm_worker is initialised or killed?
-
     print('test set_rpm(target:list). Motor may jolt initially.')
     bf.set_rpm_worker_on(True)
     bf.set_rpm([1700, 1700, 1700, 1700])
@@ -292,17 +298,11 @@ def test_rpm():
 
     bf.set_rpm_worker_on(False)
 
-def test_switch():
-    print('TESTING SWITCH...')
-    bf.set_arming(True)
-    time.sleep(5)
-    bf.set_arming(False)
-        
 
 if __name__ == '__main__':
     print('LAUNCHED AS MAIN - COMMENCING TESTING...')
     input('Confirm start: ')
-    bf = Drone(path = '../bf-conf/debug/betaflight-configurator/linux64/betaflight-configurator')
+    bf = Drone(path = '../../bf-conf/debug/betaflight-configurator/linux64/betaflight-configurator')
     test_switch()
     bf.set_arming(True)
     test_throttle()

@@ -1,3 +1,16 @@
+"""
+processor.py
+
+Not a real CPU, but deals with all scientific analyses and data processing.
+
+Variable names
+- name: relpath / abspath to a 'Data' file (json dump).
+- fig: relpath / abspath to where the plotted figure is to be saved (OVERWRITES.)
+- path: relpath / abspath to a folder where a batch of data files are located.
+- fl, fr: the range of frequencies to survey, [fl, fr]. If None then no limit.
+"""
+
+
 import os, scipy
 import matplotlib.pyplot as plt
 import numpy as np
@@ -9,10 +22,11 @@ from utils import Data
 """
 SNAPTAIN processing functions 
 """
-# returns time and values of the -lift / w^2
-# this value is expected to be proportional to the coefficient of lift, Cl.
-# among top 3 peaks, it will only take the tallest in range [fl, fr].
-# outliers (1.5 IQR, z = 3) are filtered
+# takes in a Data object, and for each frame, pick the most prominent peak in [fl, fr].
+# the lift that frame is then normalised by frequency squared of the picked peak.
+# this gives us a coefficient of lift (CL) against time plot.
+# CL is then filtered for outliers (1.5 IQR, z = 3).
+# return -> (time: list, CL: list)  (filtered)
 def w2_normalisation(data: Data, fl:float = None, fr:float = None) -> tuple[list, list]:
     norm_t = list()
     norm_val = list()
@@ -36,8 +50,7 @@ def w2_normalisation(data: Data, fl:float = None, fr:float = None) -> tuple[list
     return norm_t, norm_val
 
 
-# takes a file 'name', read the data out of it, then plot data.
-# figure is optionally saved to fig: str
+# plot w2_normalisation result for a single Data dump.
 def w2_norm_plot(name: str, fig: str = None, fl = None, fr = None):
     plt.ioff()
     plt.clf()
@@ -48,7 +61,6 @@ def w2_norm_plot(name: str, fig: str = None, fl = None, fr = None):
         print(f':w2_norm_plot: data imported from {name} does not have a height defined; Abort.')
         return
 
-    # fl, fr to filter out misidentified peaks
     x, y = w2_normalisation(data, fl = fl, fr = fr)
 
     mean = st.mean(y)
@@ -66,7 +78,8 @@ def w2_norm_plot(name: str, fig: str = None, fl = None, fr = None):
     plt.clf()
 
 
-# plot graph of the w2_norm values against height.
+# process all Data files in a path, for each find a mean CL value,
+# then plot that against height.
 def w2_norm_height_plot(path: str, fig: str = None, fl = None, fr = None):
     plt.ioff()
     plt.clf()
@@ -104,11 +117,13 @@ def w2_norm_height_plot(path: str, fig: str = None, fl = None, fr = None):
     plt.clf()
     
 
-# bin frames in a data by their w, into bins specified by endpoints.
-# for example, endpoints of [a, b, c] will give rise to two bins, [a, b) and [b, c)
-# return values: list of lists of frames, bins. The index corresponds to the endpoints:
-# bin[i] stores heights whose frames have endpoints endpoints[i], endpoints[i + 1].
-def bin_by_w(data: Data, endpoints: list) -> list:
+# bin lift values by frequency ranges.
+# endpoints: endpoints for the bin intervals. 
+#   [endpoints[0], endpoints[1]) is the interval for the first bin.
+#   the list must be sorted.
+# return -> (height, bins)
+#   for example bin[0] stores lift of all frames whose peak is between endpoints[0] and endpoints[1]
+def bin_by_w(data: Data, endpoints: list) -> tuple[float, list]:
     # element-wise comparison
     if (sorted(endpoints) != endpoints).all():
         print('(E) :bin_by_w: the endpoints provided are not sorted. Bins ill-defined.')
@@ -134,8 +149,8 @@ def bin_by_w(data: Data, endpoints: list) -> list:
     return height, bins
 
 
-# get all the data (with height) in a particular path, bin the data by w and for each bin, plot a line of lift versus distance.
-# endpoints specify the bins. if fig is provided, the graph will be saved there.
+# bin the lift values by w and for each bin, plot a scatter plot of lift versus distance.
+# different bins distinguished by colour.
 def bin_by_w_plot(path: str, endpoints: list, fig: str = None):
     plt.clf()
 
@@ -199,11 +214,15 @@ def bin_by_w_plot(path: str, endpoints: list, fig: str = None):
 BETAFLIGHT processing functions
 """
 # Read Data dumps from path, and sort them into batches (height, timestamp) and for each batch, into different rpm.
-def get_results_by_batch(path: str, heights: float|list = None, rpm_range: list = None) -> dict:
+# heights: height (float) or heights (float) to show in plot. None: all heights.
+# rpm_range: lower (rpm_range[0]) and upper (rpm_range[1]) limit for rpm range of interest.
+# return -> result_by_batch: dict = (batch -> result_by_rpm), where
+#   result_by_rpm: dict = (target_rpm -> frames)
+def get_results_by_batch(path: str, heights: float|list = None, rpm_range: tuple = None) -> dict:
     if type(heights) is float or type(heights) is int:
         heights = [heights]
 
-    result_by_batch = dict()   # height, timestamp: float -> list(result_by_rpm: dict)
+    result_by_batch = dict()   # tuple(height, timestamp) -> list(result_by_rpm: dict)
     # for each result_by_rpm: rpm[4] -> list(frames: Frame)
     # group all with the same height into a series, in which group those with the same target into the same point which we do statistics on.
     for name in get_data_files(path):
@@ -237,11 +256,6 @@ def get_results_by_batch(path: str, heights: float|list = None, rpm_range: list 
         result_by_rpm[target].extend(data.frames)
     
     for batch, result_by_rpm in result_by_batch.items():
-        # result_by_batch[batch] = dict(sorted(result_by_rpm.items(),
-        #                                       key = lambda pair:st.mean(pair[0])))
-        # just to remark that I lost 3hrs+ for the last line, which dereferenced result_by_rpm.
-        # I was thinking how the dereferenced frames in the next line could've influenced the thing...
-        # well, at least it does mean I still understand basics of OOP. Just bad at debugging :)
         for target_rpm, frames in result_by_rpm.items():
             rpm = [frame.get_mean_rpm() for frame in frames]
             total_mass = [frame.get_total_mass() for frame in frames]
@@ -261,9 +275,9 @@ def get_results_by_batch(path: str, heights: float|list = None, rpm_range: list 
     return result_by_batch
 
 
+# calls get_results_by_batch to process data.
 # fig: path to save lift against rpm2 plots.
-# fig2: path to save CoL against height plot.
-# input data can be filtered with height and rpm_range.
+# fig2: path to save CL against height plot.
 def rpm2_lift_plot(path: str, heights: float|list = None, rpm_range: list = None, fig: str = None, fig2: str = None):
     plt.ioff()
     plt.clf()
@@ -337,7 +351,7 @@ def rpm2_lift_plot(path: str, heights: float|list = None, rpm_range: list = None
     plt.clf()
 
 
-# Plot lift(z) against RPM(y) and height(x) in 3D.
+# plot lift(z) against RPM(y) and height(x) in 3D.
 def rpm_height_3d_plot(path: str, heights: float|list = None, rpm_range: list = None, fig: str = None):
     plt.ioff()
     
@@ -378,8 +392,9 @@ def rpm_height_3d_plot(path: str, heights: float|list = None, rpm_range: list = 
     plt.clf()
 
 
-# filter a list with three different methods.
-# returns a list of the outliers' indices
+# filter a list with z-values, IQR and percentile limit.
+# if none of these are specified, no values are filtered.
+# return -> indices: list. indices of outlier items.
 def outlier_filter(x: list, z: float = None, iqr_factor: float = None, percentile_limit: float = 0) -> list:
     if (percentile_limit >= 100
         or (z and z < 0)
@@ -410,17 +425,22 @@ def outlier_filter(x: list, z: float = None, iqr_factor: float = None, percentil
 """
 GENERIC processing functions
 """
-# remove elements by a list of indices
+# remove elements at positions {indices} in list {x}
+# return -> filtered list of x
 def remove_by_indices(x: list, indices: list) -> list:
     return [x[i] for i in range(len(x)) if i not in indices]
 
 
-# a lenient "in range". If fl/fr is None then assume any value at that side.
+# return if {val} is in [l, r).
+# if either l or r is None, that side of the limit is ignored.
+# return -> True if in range, False otherwise.
 def in_range(val: float, l: float = None, r: float = None) -> bool:
     return (l is None or l < val) and (r is None or val < r)
 
 
-# return the path to the list of valid data files
+# get a list of the paths to all the valid files (json) in a folder
+# path: the folder to look at, non-recursive.
+# return -> list of paths to valid files.
 def get_data_files(path: str) -> list:
     return [os.path.join(path, filename) 
             for filename in os.listdir(path) 

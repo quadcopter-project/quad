@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import multiprocessing as mp
 
 
+# stores all experimental data at a point in time.
 @dataclass
 class Frame:
     t: float = 0
@@ -31,30 +32,32 @@ class Frame:
     peak_freq:list = field(default_factory=list) 
     peak_ampl:list = field(default_factory=list) 
 
-    compact:bool = False        # put at the end, so can assume it implicitly.
+    compact:bool = False    # True: the Frame has been rid of audio.
 
-    # return _copy_ of original frame without audio
-    def compactify(self):
+    # return a copy of frame instance without any currently stored audio.
+    # useful for saving memory when loading a lot of files with raw audio.
+    # return -> compactified frame (frame.compact = True)
+    def compactify(self) -> Frame:
         frame_copy = dataclasses.replace(self)
         frame_copy.audio = []     # do not clear, since frame_copy.audio is a shallow copy
         frame_copy.compact = True
         return frame_copy
 
-    # used to recover data from a saved Data json file.
+    # recover data from a saved Data json file.
+    # state: dict with keys being Frame attributes and values the attributes' values.
     def update(self, state:dict):
         for key, value in state.items():
             setattr(self, key, value)
 
-    # even when Arduino isn't connected, this will yield 0.
-    # TODO: As we progress, might want to change Arduino behaviour to 
-    # raising an error if arduino not found.
+    # NOTE: even when Arduino isn't connected, this will yield 0.
     def get_total_mass(self) -> float:
         return sum(self.mass)
 
     def get_mean_rpm(self) -> float:
         return st.mean(self.rpm)
 
-    # Only works on the 9-cell setup.
+    # reconstruct 3d force vector from readings of 9-load cell setup.
+    # return -> force in 3D [x, y, z].
     def get_mass_vec(self) -> list:
         if len(self.mass) != 9:
             raise IndexError('(E) Frame::get_mass_vec: must have 9 elements for get_mass_vec to work (9-cell setup.)')
@@ -78,21 +81,26 @@ class Frame:
         mass_vec[2] = -sum(f[:, 0])   # z-component adds simply
         return mass_vec
 
-    # NOTE: some dangerous hardcoding here.
+    # NOTE: HARDCODING HERE.
+    # return -> reading of first (there's only one) accelerometer [x, y, z].
     def get_accel_vec(self) -> list:
         return self.accel[0]
 
 
+# stores all data.
 @dataclass
 class Data:
     height: float = None
     target_rpm: list = None
     timestamp: float = None
-    platform: str = None    # 'snaptain' or 'betaflight' or 'betaflight-2.0'
+    platform: str = None    # 'snaptain' or 'betaflight' or 'betaflight-2'
     description: str = None
     compact: bool = False
     frames: list = field(default_factory=list)
     
+    # add a frame of data.
+    # kwargs: this allows use of **asdict(ardmanager_object.get_reading())
+    # keys in kwargs that are not a Frame attr are ignored.
     def add(self, t:float,
             audio:list = None,
             dt:float = None,
@@ -106,6 +114,7 @@ class Data:
             peak_freq, peak_ampl = Numerical.find_peaks(freq, ampl) 
             peak_freq, peak_ampl = Numerical.sort_peaks(peak_freq, peak_ampl)
 
+        # remove unknown properties in kwargs
         # useful for e.g. an unpacked ArdReading.
         dummy_frame = Frame()   # hasattr doesn't work on a class.
         for kw in list(kwargs.keys()):  # or else, RuntimeError results.
@@ -125,6 +134,7 @@ class Data:
     
 
     # GET functions (public)
+    # important for `generic` functions in the new Plotter.
     def get_t(self) -> list:
         return [frame.t for frame in self.frames]
 
@@ -144,39 +154,42 @@ class Data:
     def get_mass_vec(self) -> list:
         return [frame.get_mass_vec() for frame in self.frames]
 
-    # NOTE: a dangerous bit of hard coding. frame.accel is returned as a list of lists, representing [x, y, z] of individual sensors.
     def get_accel_vec(self) -> list:
         return [frame.get_accel_vec() for frame in self.frames]
 
-    # NOTE: same as above, a bit of hardcoding.
+    # NOTE: HARDCODING HERE.
+    # return -> reading from first distance (ultrasound) sensor (there's only one).
     def get_dist(self) -> list:
         return [frame.dist[0] for frame in self.frames]
 
-    # return average and stdev data for total mass over time.
+    # return -> (mean, stdev) for total mass over time.
     # if only one data point is provided, stdev is set to 0.
     def get_mass_stat(self) -> tuple[float, float]:
         tot_mass = self.get_total_mass()
         stdev = st.stdev(tot_mass) if len(tot_mass) > 1 else 0
         return st.mean(tot_mass), stdev
-    
-    def get_log(self, ind:int = None, _t:float = None):
-        frame = self.get_frame(ind, _t)
-        return [frame.t, frame.get_total_mass(), frame.get_mean_rpm()] + frame.peak_freq
 
-    def get_frame(self, ind:int = None, _t:float = None):
-        if (ind and _t):
+    # return -> frame at index {ind} or first frame with frame.t > t
+    #   None in case of no match
+    def get_frame(self, ind:int = None, t:float = None) -> Frame:
+        if (ind and t):
             raise Exception("Can only get_frame() specifying one of index and time.")
+
         if ind:
             return self.frames[ind]
         
         if t:
             for frame in self.frames:
-                if frame.t > _t:
+                if frame.t > t:
                     return frame
+
         return None
 
+    def __getitem__(self, key) -> Frame:
+        return self.frames[key] 
 
     # AUXILIARY functions (public)
+    # re-initialise this instance.
     def clear(self):
         self.height = None
         self.target_rpm = None
@@ -188,12 +201,16 @@ class Data:
         self.frames.clear()
 
     # TODO: not tested yet
+    # remove all audio information in all Frames to reduce memory use.
+    # return -> compactified copy of data instance (data.compact = True)
     def compactify(self):
         data_copy = dataclasses.replace(self)
         data_copy.frames = [frame.compactify() for frame in self.frames]
         data_copy.compact = True
         return data_copy
 
+    # save this instance to json file at {name}.
+    # name: path to json file.
     def dump(self, name: str):
         frames_list = [frame.__dict__ for frame in self.frames]
         # modify the original dict, because json cannot parse our Frame class.
@@ -207,6 +224,8 @@ class Data:
         with open(name, 'w') as file:
             file.write(data_json)
 
+    # load this instance with data in saved json file.
+    # name: path to json file.
     def load(self, name: str):
         if not os.path.isfile(name):
             raise IOError(f'(E) Data::load: {name} does not exist.')
@@ -254,15 +273,17 @@ class Data:
                 self.frames.append(frame)
 
     # convert the now-deprecated frame_list json files to the new format
+    # output files are saved in path/converted/
+    # path: folder where frame_list format data files are stored.
     @staticmethod
-    def _convert_frames_list(directory: str):
+    def _convert_frames_list(path: str):
         # output to a 'converted' folder
-        output_dir = os.path.join(directory, 'converted')
+        output_dir = os.path.join(path, 'converted')
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
 
-        for filename in os.listdir(directory):
-            name = os.path.join(directory, filename)
+        for filename in os.listdir(path):
+            name = os.path.join(path, filename)
             output_name = os.path.join(output_dir, filename)
             if (not os.path.isfile(name)) or filename.split('.')[-1] != 'json':
                 continue
@@ -287,7 +308,7 @@ class Data:
             print(data2 == data)
 
 
-# NOTE: DEPRECATED.
+# NOTE: DEPRECATED IN FAVOUR OF plotter.py
 # plots in a non-blocking manner.
 class Plotter:
     def __init__(self):
@@ -317,8 +338,8 @@ class Plotter:
         # reserved line for analysis
         self.rsvd_ln = self.axs[1][2].plot([], [])[0]
         
-    # window specified how much of the most recent history to show.
-    # by how much, we mean the number of entries in time, NOT number of seconds.
+    # only function that needs to be called normally.
+    # window: number of the most recent frames in data to show.
     # defaults to None: show all history
     def plot(self, data: Data, window:int=None):
         cf = data.get_frame(-1) # current frame
@@ -377,11 +398,12 @@ class Plotter:
         self.rpm_ln.set_xdata(t)
         self.rpm_ln.set_ydata(mean_rpm)
 
-    # update reserved graph: needs to be explitictly called.
+    # update reserved graph #6: needs to be explitictly called.
     def update_rsvd(self, x: list, y: list):
         self.rsvd_ln.set_xdata(x)
         self.rsvd_ln.set_ydata(y)
         
+    # reset graph limits, rescale them and refresh GUI.
     def refresh(self):
         for row in self.axs:
             for ax in row:
@@ -405,21 +427,9 @@ class Recorder:
     dt = 1 / FS
     DEVICE_INDEX = None
 
-    # print the outputs and their indices.
-    # sometimes PyAudio defaults to the wrong device
-    # possibly more likely because we are using pipewire.
-    # see https://stackoverflow.com/questions/36894315/how-to-select-a-specific-input-device-with-pyaudio
-    @staticmethod
-    def get_outputs():
-        p = pyaudio.PyAudio()
-        info = p.get_host_api_info_by_index(0)
-        numdevices = info.get('deviceCount')
-
-        for i in range(0, numdevices):
-            if (p.get_device_info_by_host_api_device_index(0, i).get('maxInputChannels')) > 0:
-                print("Input Device id ", i, " - ", p.get_device_info_by_host_api_device_index(0, i).get('name'))
-
-    # defaults to pipewire output
+    # PRIVATE METHODS
+    # device_name: which device to record from.
+    # defaults to linux system with pipewire.
     def __init__(self, device_name: str = 'pipewire'):
         self.pa = pyaudio.PyAudio()
 
@@ -445,27 +455,36 @@ class Recorder:
         self.record(3)  # rid of weird junk at start
         
     # get raw data; not parsed to avoid overhead during rec.
+    # return -> raw_chunk: bytes
     def get_chunk(self) -> bytes:
         # Workaround for input overflowed error
         raw_chunk = self.stream.read(self.CHUNK, exception_on_overflow = False)
         return raw_chunk
 
+    # parse raw_audio received from get_chunk to numbers.
+    # return -> list of amplitudes in time
     @staticmethod
     def parse(raw_audio: bytes) -> list:
-        # fromstring is now deprecated
         parsed = np.frombuffer(raw_audio, dtype=np.float32).tolist()
         return parsed
-    
-    # record for (time) seconds
+
+    # PUBLIC METHODS 
+    # print audio devices and their indices
+    @staticmethod
+    def get_outputs():
+        p = pyaudio.PyAudio()
+        info = p.get_host_api_info_by_index(0)
+        numdevices = info.get('deviceCount')
+
+        for i in range(0, numdevices):
+            if (p.get_device_info_by_host_api_device_index(0, i).get('maxInputChannels')) > 0:
+                print("Input Device id ", i, " - ", p.get_device_info_by_host_api_device_index(0, i).get('name'))
+   
+    # window: length of recording in seconds
+    # return -> list of amplitues by time.
     def record(self, window: float=1) -> list:
         audio = []
-        """ deprecated method: Infers recorded time from sampling rate.
-        #   the resulting audio:list will be of the right length, but
-        #   the real-world time is longer than that, introducing extra data.
-        for i in range(0, int(self.FS / self.CHUNK * window)):
-            audio.extend(self.get_chunk())
-        """
-        # similar to get_avg_masses in Arduino 
+
         t = time.time()
         raw_audio = self.get_chunk()
         while time.time() - t < window:
@@ -475,15 +494,18 @@ class Recorder:
         audio = self.parse(raw_audio)
         return audio        
 
+    # close the stream and terminate PyAudio.
     def close():
-        # Stop and close the stream 
         self.stream.stop_stream()
         self.stream.close()
-        # Terminate the PortAudio interface
         self.pa.terminate()
 
 
 class Numerical:
+    # audio: list of amplitudes
+    # dt: difference in time between two neighbouring audio values.
+    # fl, fr: range of frequencies to do fft [fl, fr].
+    # return -> freq's and the corresponding amplitudes at the freqs.
     @staticmethod
     def fft(audio: list, dt: float, fl:float=0, fr:float=20000) -> tuple[list, list]:
         freq = np.fft.fftfreq(len(audio), d = dt).tolist()
@@ -497,12 +519,21 @@ class Numerical:
                 ir = i - 1
         return freq[il:ir], ampl[il:ir]
 
-    # Filter input signal in time space with scipy filter.
+    # high-pass filter.
+    # audio: list of amplitudes by time.
+    # cutoff: cutoff freqeuency for filter (Hz)
+    # FS: samples per second of audio. See Recorder.
+    # return -> filtered list.
     @staticmethod
-    def freq_filter(audio:list, cutoff:float) -> list:
+    def freq_filter(audio:list, cutoff:float, FS: float) -> list:
         b, a = signal.butter(5, cutoff / (0.5*FS), btype='high', analog = False)  
         return signal.filtfilt(b, a, audio)
 
+    # find peaks in an x-y plot.
+    # prom: prominence, dist: distance. ht: height.
+    # default values are empirical.
+    # see scipy.signal doc for more details.
+    # return -> (x, y) coordinate of peaks.
     @staticmethod
     def find_peaks(x:list, y:list, prom=30, dist=20, ht=50) -> tuple[list, list]:
         peaks, _ = signal.find_peaks(y, prominence=prom, distance=dist, height=ht)
@@ -510,14 +541,12 @@ class Numerical:
         peak_y = [y[peak] for peak in peaks]
         return peak_x, peak_y
 
-    # sort the peaks in descending strength
+    # sort the peaks in descending y values, then x
+    # peak_x, peak_y: coordinate of peaks.
+    # return -> sorted lists of peak_x, peak_y.
     @staticmethod
     def sort_peaks(peak_x:list, peak_y:list) -> tuple[list, list]:
         res = sorted(zip(peak_y, peak_x), reverse = True)
         sorted_x = [el[1] for el in res]
         sorted_y = [el[0] for el in res]
         return sorted_x, sorted_y
-
-
-if __name__ == '__main__':
-    print('utils:: Called as main, executing tests.')

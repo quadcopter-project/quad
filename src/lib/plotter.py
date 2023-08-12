@@ -6,11 +6,16 @@ NOTE:   This will BREAK old code, specifically right at the initialiser.
 plots in a non-blocking manner.
 When adding a new plot method, one must modify the following:
     - SUPPORTED: list
-    - XLABELS: dict
+        Append to it your graph_type.
+    - XLABELS: dict                             (if not 'time / s')
+        graph_type -> xlabel
     - YLABELS: dict
     - TITLES: dict
-    - init_(graph_type) function    (if required)
-    - update_(graph_type) function  (if required)
+    - init_(graph_type) function                    (if required)
+    - update_(graph_type) function                  (if required)
+    - get_(graph_type) function in lib.Data         (if using update_generic) 
+    - get_(graph_type)_vec function in lib.Frame    (if using update_generic_vec) 
+    - get_(graph_type)_vec function in lib.Data     (if using update_generic_comp)
 
     vector plotters must end with _vec for generic functions to recognise them automatically.
     they also don't require an XLABEL or YLABEL.
@@ -134,13 +139,13 @@ class Plotter:
                     axis.set_xlabel(self.GENERIC_XLABEL)
 
                 axis.set_ylabel(self.YLABELS[graph_type])
-
         
 
     # UPDATE functions (public)
-    # window specified how much of the most recent history to show.
-    # by how much, we mean the number of entries in time, NOT number of seconds.
-    # defaults to None: show all history
+
+    # data: all currently available data.
+    # window: number of frames in recent history to show. 
+    # window of None gives all history.
     def plot(self, data: Data, window:int=None):
         for graph_id, graph_type in self.graph_types.items():
             update_func_name = 'update_' + graph_type
@@ -160,6 +165,8 @@ class Plotter:
 
         self.refresh()
 
+    # auto-update limits, scale, and update pyplot GUI.
+    # called in self.plot, so is usually not needed.
     def refresh(self):
         for graph_id, graph_type in self.graph_types.items():
             axis = self.get_axis(graph_id)
@@ -173,8 +180,9 @@ class Plotter:
 
     
     # UPDATE functions (private)
-    # The window is ignored here.
-    def update_audio(self, graph_id: tuple, graph_type: str, data: Data, window: int = None):
+    # graph_id: (row, col) of graphs.
+    # window is ignored here, accounted for by **kwargs.
+    def update_audio(self, graph_id: tuple, graph_type: str, data: Data, **kwargs):
         cur_frame = data.get_frame(-1)
         audio = cur_frame.audio
         if audio is None:
@@ -188,7 +196,7 @@ class Plotter:
         line.set_xdata(t)
         line.set_ydata(audio)
 
-    def update_freq(self, graph_id: tuple, graph_type: str, data: Data, window: int = None):
+    def update_freq(self, graph_id: tuple, graph_type: str, data: Data, **kwargs):
         cur_frame = data.get_frame(-1)
         freq = cur_frame.fft_freq
         ampl = cur_frame.fft_ampl
@@ -234,8 +242,7 @@ class Plotter:
         line.set_xdata(t)
         line.set_ydata(val)
             
-    # TODO: get_mass_vec is not implemented in Frame.
-    def update_generic_vec(self, graph_id: tuple, graph_type: str, data: Data, window: int = None):
+    def update_generic_vec(self, graph_id: tuple, graph_type: str, data: Data, **kwargs):
         cur_frame = data.get_frame(-1)
         get_func_name = 'get_' + graph_type
         get_func = getattr(cur_frame, get_func_name) 
@@ -259,7 +266,6 @@ class Plotter:
         axis.set_ylim3d(bottom = -lim, top = lim)
         axis.set_zlim3d(bottom = -lim, top = lim)
 
-    # TODO: get_mass_comp is not implemented in Data.
     def update_generic_comp(self, graph_id: tuple, graph_type: str, data: Data, window: int = None):
         get_func_name = 'get_' + graph_type.replace('comp', 'vec')
         get_func = getattr(data, get_func_name)
@@ -278,10 +284,14 @@ class Plotter:
             lines[i].set_ydata([vec[i] for vec in vec_list])     # i-th component
     
     # GET functions (private)
+    # return -> matplotlib.axes.Axes object at graph_id.
     def get_axis(self, graph_id: tuple):
         row, col = graph_id
         return self.axs[row][col]
     
+    # returns the list of line objects at graph_id.
+    # even if there is one line, a list will be returned for consistency.
+    # return -> lines
     def get_lines(self, graph_id: tuple) -> list:
         if graph_id not in self.lines.keys():
             self.lines[graph_id] = list()
