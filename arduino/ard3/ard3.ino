@@ -6,7 +6,7 @@ bool isOperating = false;
 const int NUM_CELLS = 3;
 const int LOADCELL_DOUT_PIN_0 = 3;
 const int LOADCELL_SCK_PIN_0 = 2;
-const double CALIB_FACTOR[NUM_CELLS] = {-17224.68, 16637.73, -16851.23};
+const double CALIB_FACTOR[NUM_CELLS] = {-17223.54, 16631.50, -16851.23};
 
 HX711 scales[NUM_CELLS];
 
@@ -149,5 +149,7 @@ void loop() {
     }
 
     report();
+
+    delay(100);
 
 }
