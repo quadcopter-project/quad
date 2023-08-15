@@ -360,7 +360,11 @@ class Arduino:
     # move by number of STEPS
     # target: list specifies all motors;
     # target: int moves all motors for the same steps. 
-    def move(self, target: list, block: bool = False):
+    def move(self, target: int|list, block: bool = False):
+        motor_num = len(self.get_reading().motor)
+        if type(target) is int:
+            target = [target] * motor_num
+
         self.write('MOVE ' + " ".join([str(steps) for steps in target]))
         
         if block:
@@ -380,6 +384,13 @@ class Arduino:
         while self.is_operating():
             time.sleep(0.05)
             print(self.get_reading())
+
+    def set_height(self, height: float, block: bool = False):
+        self.write(f'HEIGHT {height}')
+        if block:
+            time.sleep(1)
+            while self.is_operating():
+                time.sleep(0.5)
 
     def tare(self, block = False):
         self.write('TARE')

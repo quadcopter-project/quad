@@ -14,13 +14,17 @@ AccelStepper motor[NUM_MOTOR];
 
 // MOTOR algorithm parameters
 // level parameters
-const int STARTING_DOWNWARD_STEP = 200;
-const int MIN_DOWNWARD_STEP = 25;
-const double ACCEL_TOLERANCE = 0.1; // translates to about 0.6 degs
+const int STARTING_DOWNWARD_STEP = 100;
+const int MIN_DOWNWARD_STEP = 10;
+const double STEP_DIV_FACTOR = 2.5; // using funny numbers might help with the "granular" nature of dividing steps by 2
+const double ACCEL_TOLERANCE = 0.15; // translates to about 0.9 degs
 // setHeight parameters
-const double DIST_TOLERANCE = 0.2;
-const double DOWNWARD_SPEED = -60;
-const double UPWARD_SPEED = 30;
+const double DIST_TOLERANCE = 0.75;
+const double QUICK_ADJUST_LIMIT = 4;
+const double QUICK_ADJUST_UP_STEPS = 50;
+const double QUICK_ADJUST_DOWN_STEPS = -50;
+const double FINE_ADJUST_UP_STEPS = 10;
+const double FINE_ADJUST_DOWN_STEPS = -10;
 
 // HC-SR04
 const int TRIG_PIN = 8;
@@ -32,7 +36,7 @@ const int ECHO_PIN = 9;
 #include <Adafruit_Sensor.h>
 Adafruit_MMA8451 mma = Adafruit_MMA8451();
 const int ACCEL_MEAN_REPEATS = 3;
-const int ACCEL_DELAY = 500;    // so that system can settle down.
+const int ACCEL_DELAY = 1500;    // so that system can settle down.
 
 // Utitilies for reading and parsing Serial input
 const int MAX_STR_LEN = 50;
@@ -108,7 +112,7 @@ inline double getDistance() {
     // trigger sensor with a HIGH pulse of 10us
     digitalWrite(TRIG_PIN, LOW);
     delayMicroseconds(5);
-    digitalWrite(ECHO_PIN, HIGH);
+    digitalWrite(TRIG_PIN, HIGH);
     delayMicroseconds(10);
     digitalWrite(TRIG_PIN, LOW);
 
@@ -161,7 +165,10 @@ inline void setSpeed(double speed) { for (int i = 0; i < NUM_MOTOR; i++) motor[i
 
 inline void runSpeed() { for (int i = 0; i < NUM_MOTOR; i++) motor[i].runSpeed(); }
 
+inline void move(int steps) { for (int i = 0; i < NUM_MOTOR; i++) motor[i].move(steps); }
+
 inline void blockedRun() {
+    bool wasOperating = isOperating;
     isOperating = true;
     report();
     while (isRunning()) {
@@ -171,11 +178,12 @@ inline void blockedRun() {
             readline();
             char substr[20];
             next_substr(substr);
+            // no need to call blockedRun() again below, since
+            // we are still in while loop, so it will move til stop if needed.
             if (strcmp(substr, "STOP")) stop();
-            
         }
     }
-    isOperating = false;
+    isOperating = false | wasOperating;
     report();
 }
 
@@ -193,29 +201,28 @@ void _setHeight(double lim) {
     // define distance from when the sensor _just_ starts to report that distance
     // as the drone is raised.
     if (dist >= lim) {
-        setSpeed(DOWNWARD_SPEED);
         while (dist >= lim) {
-            runSpeed();
+            int steps = FINE_ADJUST_DOWN_STEPS;
+            if (dist - lim > QUICK_ADJUST_LIMIT) steps = QUICK_ADJUST_DOWN_STEPS;
+            move(steps);
+            blockedRun();
             dist = getDistance();
-            report();   // TODO: in a production version, this can be eliminated
-            delay(50);  // for ultrasound echo to get ready
+            report();
         }
     } 
-    stop();
-    blockedRun();
 
+    // must be sure the drone is level, or else the below raising segment will overshoot.
     level();
 
     // and now we are sure the drone is below specified height limit.
-    setSpeed(UPWARD_SPEED);
     while (dist < lim) {
-        runSpeed();
+        int steps = FINE_ADJUST_UP_STEPS;
+        if (dist + QUICK_ADJUST_LIMIT < lim) steps = QUICK_ADJUST_UP_STEPS;
+        move(steps);
+        blockedRun();
         dist = getDistance();
         report();
-        delay(50);
     }
-    stop();
-    blockedRun();
 
     level();
 
@@ -239,7 +246,11 @@ void level() {
             getMeanAccel(accel);
             xy = sq(accel[0]) + sq(accel[1]);
 
-            motor[i].move(-downward_step);
+            // this movement pattern pretty much ensures the height is constant.
+            // credit goes to James for coming up with it.
+            move(downward_step / 2);
+            motor[i].move(-downward_step); // overwrite
+            
             blockedRun();
             getMeanAccel(accel);
             xy1 = sq(accel[0]) + sq(accel[1]);
@@ -248,21 +259,28 @@ void level() {
                 // only require this while statement to be executed once to show we still have space for optimisation at larger step.
                 success_flag = true;
                 xy = xy1;
+
+                move(downward_step / 2);
                 motor[i].move(-downward_step);
+
                 blockedRun();
                 getMeanAccel(accel);
                 xy1 = sq(accel[0]) + sq(accel[1]);
             }
-            motor[i].move(downward_step); // at this point we must have overshot.
+            // at this point we must have overshot.
+            move(-downward_step / 2);
+            motor[i].move(downward_step);
             blockedRun();
         }
     
         // finer accuracy required.
-        if (!success_flag) downward_step /= 2;
+        if (!success_flag) downward_step /= STEP_DIV_FACTOR;
 
         // didn't work, give it a kick and retry.
         if (downward_step < MIN_DOWNWARD_STEP) {
-            motor[random(0, 3)].move(random(200, 400));
+            int random_step = -random(200, 400);
+            move(-random_step / 2);
+            motor[random(0, 3)].move(random_step);
             blockedRun();
             downward_step = STARTING_DOWNWARD_STEP;
         }
@@ -290,6 +308,7 @@ void setHeight(double lim) {
     while (abs(dist - lim) > DIST_TOLERANCE \
         || max(abs(accel[0]), abs(accel[1])) > ACCEL_TOLERANCE) {
         _setHeight(lim);
+        delay(ACCEL_DELAY * 2); // for platform to settle down
         getAccel(accel);
         dist = getDistance();
         report();
