@@ -37,7 +37,7 @@ class Frame:
     # return a copy of frame instance without any currently stored audio.
     # useful for saving memory when loading a lot of files with raw audio.
     # return -> compactified frame (frame.compact = True)
-    def compactify(self) -> Frame:
+    def compactify(self):
         frame_copy = dataclasses.replace(self)
         frame_copy.audio = []     # do not clear, since frame_copy.audio is a shallow copy
         frame_copy.compact = True

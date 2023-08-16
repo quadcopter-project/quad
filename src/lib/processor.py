@@ -411,7 +411,7 @@ def outlier_filter(x: list, z: float = None, iqr_factor: float = None, percentil
     for i in range(len(x)):
         val = x[i]
         # only need to satisfy one of these criteria to be removed.
-        if z is not None and abs(val - mean) / stdev > z:
+        if z is not None and stdev and abs(val - mean) / stdev > z:
             indices.append(i)
         elif (iqr_factor is not None
             and (val > q3 + iqr_factor * iqr or val < q1 - iqr_factor * iqr)):
@@ -447,4 +447,15 @@ def get_data_files(path: str) -> list:
             if os.path.isfile(os.path.join(path, filename))
             and filename.split('.')[-1] == 'json']
 
+
+# return a list of Data objects loaded from json files in {path}.
+def get_data_list(path: str) -> list:
+    data_list = list()
+    data_files = get_data_files(path)
+    for name in data_files:
+        data = Data()
+        data.load(name)
+        data_list.append(data)
+
+    return data_list
 
