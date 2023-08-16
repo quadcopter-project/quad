@@ -180,12 +180,22 @@ class Drone:
         self.target[ind] = target
 
     # target: int will set all motors to the same rpm.
-    def set_rpm(self, target:int|list):
+    # block = True: The function will block until all RPMs are different from their target within pm RPM_TOLERANCE.
+    def set_rpm(self, target:int|list, block:bool = False):
+        RPM_TOLERANCE:float = 150
         if type(target) is int:
             target = [target] * self.NUM_OF_MOTORS
 
         for i in range(len(target)):
             self.set_rpm_for_motor(i, target[i])
+
+        if block:
+            rpm = self.get_rpm()
+            abs_diff = [abs(target[i] - rpm[i]) for i in range(self.NUM_OF_MOTORS)]
+            while any(diff > RPM_TOLERANCE for diff in abs_diff):
+                time.sleep(0.5)
+                rpm = self.get_rpm()
+                abs_diff = [abs(target[i] - rpm[i]) for i in range(self.NUM_OF_MOTORS)]
 
     # start / stop rpm_worker in its own thread.
     # must be called explicitly for rpm control to take over.
@@ -228,10 +238,8 @@ class Drone:
                 if not target_rpm: # motor simply not on
                     target_throttle = self.MIN_THROTTLE
                 # Quick adjustments
-                elif rpm + 500 < target_rpm:
-                    target_throttle = throttle + 5
-                elif rpm - 500 > target_rpm:
-                    target_throttle = throttle - 5
+                elif abs(rpm - target_rpm) >= 500:
+                    target_throttle = throttle + (target_rpm - rpm) // 100
                 # finer adjustments
                 elif rpm + 75 < target_rpm:
                     target_throttle = throttle + 1
