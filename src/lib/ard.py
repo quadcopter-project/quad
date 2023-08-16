@@ -156,6 +156,11 @@ class ArdManager:
         old_mapping.motor = new_mapping.motor
         old_mapping.mass = new_mapping.mass
 
+    # block the program if any attached arduino reports itself as 'operating.'
+    def op_block(self):
+        time.sleep(1)
+        while self.is_operating():
+            time.sleep(0.5)
     
     # GET functions (public)
 
@@ -180,6 +185,8 @@ class ArdManager:
     def get_accel(self, accel_id: int = 0) -> list:
         return self.get_reading().accel[accel_id]
 
+    def is_operating(self) -> bool:
+        return True in self.get_reading().operating
 
     # DEVICE CONTROL functions (public)
 
@@ -187,7 +194,7 @@ class ArdManager:
     # target: list must specify individual motors;
     # target: int moves all motors by same steps.
     # block = True will block the function until motors finish.
-    def move(self, target: int|list, block:bool = False):
+    def move(self, target: int|list, block:bool = True):
         motor_num = len(self.mapping.motor)
 
         if type(target) is int:
@@ -210,24 +217,33 @@ class ArdManager:
             self.arduinos[dev_id].move(target_by_motor.values(), block = False)
 
         if block:
-            time.sleep(1)
-            while True:
-                reading = self.get_reading()
-                if True not in reading.motor:
-                    break
-                time.sleep(0.5)
+            self.op_block()
 
     # wrapper for moving individual motor. 
     # target: movement in STEPS.
-    def move_motor(self, motor_id: int, target: float):
+    def move_motor(self, motor_id: int, target: float, block = True):
         motor_num = len(self.mapping.motor)
         target = [0 if i != motor_id else target for i in range(motor_num)]
-        self.move(target)
+        self.move(target, block)
 
     # force all motors to stop
     def stop(self):
         for arduino in self.adruinos:
             arduino.stop()
+
+    def tare(self, block: bool = True):
+        for arduino in self.arduinos.keys():
+            arduino.tare(block = False)
+
+        if block:
+            self.op_block()
+    
+    def level(self, block: bool = True):
+        for arduino in self.arduinos.keys():
+            arduino.level(block = False)
+
+        if block:
+            self.op_block()
 
     # dump / save current self.mapping as a json file.
     # name: position to store the file (relpath / abspath)
@@ -310,6 +326,11 @@ class Arduino:
 
             self.line = self.readline()
 
+    # block the program if any attached arduino reports itself as 'operating.'
+    def op_block(self):
+        time.sleep(1)
+        while self.is_operating():
+            time.sleep(0.5)
 
     # GET functions (public)
 
@@ -360,7 +381,7 @@ class Arduino:
     # move by number of STEPS
     # target: list specifies all motors;
     # target: int moves all motors for the same steps. 
-    def move(self, target: int|list, block: bool = False):
+    def move(self, target: int|list, block: bool = True):
         motor_num = len(self.get_reading().motor)
         if type(target) is int:
             target = [target] * motor_num
@@ -368,9 +389,7 @@ class Arduino:
         self.write('MOVE ' + " ".join([str(steps) for steps in target]))
         
         if block:
-            time.sleep(1)
-            while self.is_operating():
-                time.sleep(0.5)
+            self.op_block()
 
     # instructs all motors to stop.
     def stop(self):
@@ -385,19 +404,15 @@ class Arduino:
             time.sleep(0.05)
             print(self.get_reading())
 
-    def set_height(self, height: float, block: bool = False):
+    def set_height(self, height: float, block: bool = True):
         self.write(f'HEIGHT {height}')
         if block:
-            time.sleep(1)
-            while self.is_operating():
-                time.sleep(0.5)
+            self.op_block()
 
-    def tare(self, block = False):
+    def tare(self, block:bool = True):
         self.write('TARE')
         if block:
-            time.sleep(0.5)
-            while self.is_operating():
-                time.sleep(0.2)
+            self.op_block()
 
     # interactively calibrate a specified load cell.
     def calibrate(self, cell_id: int, ref_mass: float):
