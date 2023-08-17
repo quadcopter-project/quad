@@ -186,7 +186,7 @@ class ArdManager:
         return self.get_reading().accel[accel_id]
 
     def is_operating(self) -> bool:
-        return True in self.get_reading().operating
+        return (True in self.get_reading().operating)
 
     # DEVICE CONTROL functions (public)
 
@@ -226,25 +226,26 @@ class ArdManager:
         target = [0 if i != motor_id else target for i in range(motor_num)]
         self.move(target, block)
 
-    # force all motors to stop
-    def stop(self):
-        for arduino in self.adruinos:
-            arduino.stop()
+    # if a function is not explicitly defined, attempt to resolve and call them for each Arduino object.
+    def __getattr__(self, attr):
+        # python will obtain this as an attribute then attempt to call it with passed variables.
+        # we need to pass the arguments along to each individual arduinos.
+        def exec_per_arduino(*args, block:bool = True, **kwargs):
+            support_block: bool = False
+            for dev_id, arduino in self.arduinos.items():
+                ard_func = getattr(arduino, attr)
+                if 'block' in ard_func.__code__.co_varnames:
+                    ard_func(*args, block = False, **kwargs)
+                    support_block = True
+                else:
+                    ard_func(*args, **kwargs)
 
-    def tare(self, block: bool = True):
-        for arduino in self.arduinos.keys():
-            arduino.tare(block = False)
+            # if block was not part of the Arduino implementation, then ignore user-specified blocking.
+            if support_block and block:
+                self.op_block()
 
-        if block:
-            self.op_block()
-    
-    def level(self, block: bool = True):
-        for arduino in self.arduinos.keys():
-            arduino.level(block = False)
-
-        if block:
-            self.op_block()
-
+        return exec_per_arduino
+        
     # dump / save current self.mapping as a json file.
     # name: position to store the file (relpath / abspath)
     def dump(self, name: str):
@@ -356,7 +357,7 @@ class Arduino:
     # return -> operating: bool
     # True: either taring load cells or motors are moving.
     def is_operating(self) -> bool:
-        return True in self.get_reading().operating
+        return (True in self.get_reading().operating)
 
     # parse the most recent arduino telemetry line then return as ArdReading object.
     # return -> reading: ArdReading
@@ -402,7 +403,6 @@ class Arduino:
         time.sleep(0.1)
         while self.is_operating():
             time.sleep(0.05)
-            print(self.get_reading())
 
     def set_height(self, height: float, block: bool = True):
         self.write(f'HEIGHT {height}')
