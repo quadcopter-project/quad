@@ -17,6 +17,7 @@ import numpy as np
 import statistics as st
 
 from utils import Data
+from math import sqrt
 
 
 """
@@ -421,6 +422,83 @@ def outlier_filter(x: list, z: float = None, iqr_factor: float = None, percentil
         
     return indices 
 
+
+"""
+LOAD CELL processing functions
+"""
+# TODO: make this paths behaviour global.
+# paths: list of all paths to use to read data files. str: One single path.
+# preview_data = True: show every data object before processing them.
+# fig1: straight line fit of measured (corrected mass) against accurately determined mass.
+# fig2: residue of fit in fig 1.
+def mass_calibration_curve(paths: list|str, preview_data: bool = False, fig1: str = None, fig2: str = None):
+    plt.ioff()
+    plt.clf()
+
+    data_files = list()
+
+    if type(paths) is str:
+        paths = [paths]
+    for path in paths:
+        data_files.extend(get_data_files(path))
+
+    std_list = list()   # mass from balance readings
+    measured_list = list()  # raw measured mass
+    corrected_list = list() # measured mass corrected by considering tilt of stand.
+
+    for name in data_files:
+        if 'mass' not in name.split('/')[-1]:
+            continue
+
+        data = Data()
+        data.load(name)
+
+        if preview_data:
+            plotter.plot(data)
+
+        # find accurate mass from file name.
+        std_list.append(float(name.split('/')[-1].split('_')[0]))
+
+        # find mean total mass with outlier filtered.
+        total_mass = data.get_total_mass()
+        mass_outlier_ind = outlier_filter(total_mass, z = 3, iqr_factor = 2)
+        total_mass = remove_by_indices(total_mass, mass_outlier_ind) 
+        measured_list.append(st.mean(total_mass))
+
+        # TODO: generalise this outlier filtering procedure. (multiple lists as arguments)
+        accel = data.get_accel_vec()
+        accel_outlier_ind = set()
+        for i in range(3):
+            comp = [a[i] for a in accel]
+            # take union, so we don't disturb the data half-way when still
+            # identifying the outliers.
+            comp_outlier_ind = set(outlier_filter(comp, z = 3, iqr_factor = 2))
+            accel_outlier_ind = accel_outlier_ind | comp_outlier_ind
+
+        accel = remove_by_indices(accel, accel_outlier_ind)
+
+        cos_list = [a[2] / sqrt(a[0]**2 + a[1]**2 + a[2]**2) for a in accel]
+        corrected_list.append(st.mean(total_mass) / st.mean(cos_list))
+
+    res = scipy.stats.linregress(std_list, corrected_list)
+    yy = [res.slope * x + res.intercept for x in std_list]
+    print(res.rvalue ** 2)
+    print(res)
+
+    diff = [corrected_list[i] - yy[i] for i in range(len(yy))]
+
+    plt.plot(std_list, corrected_list, ls = '', marker = '+')
+    plt.plot(std_list, yy)
+    if fig1 is not None:
+        plt.savefig(fig1)
+    plt.show()
+    plt.clf()
+
+    plt.plot(std_list, diff, ls = '', marker = '+')
+    if fig2 is not None:
+        plt.savefig(fig2)
+    plt.show()
+    plt.clf()
 
 """
 GENERIC processing functions
