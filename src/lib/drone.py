@@ -11,7 +11,7 @@ class Drone:
     NUM_OF_MOTORS:int = 4 
     MIN_THROTTLE:int = 1000
     # Drone gives about 200g lift at this throttle < 280g, its weight.
-    MAX_THROTTLE:int = 1250
+    MAX_THROTTLE:int = 1525
     throttle:list = [MIN_THROTTLE] * NUM_OF_MOTORS      # motor indices run from 0 
     armed = False
     rpm = None
@@ -238,17 +238,8 @@ class Drone:
                 if not target_rpm: # motor simply not on
                     target_throttle = self.MIN_THROTTLE
                 # Quick adjustments
-                elif abs(rpm - target_rpm) >= 500:
-                    target_throttle = throttle + (target_rpm - rpm) // 100
-                # finer adjustments
-                elif rpm + 75 < target_rpm:
-                    target_throttle = throttle + 1
-                elif rpm - 75 > target_rpm:
-                    target_throttle = throttle - 1
                 else:
-                    # we must be in between, so stay there!
-                    target_throttle = throttle
-
+                    target_throttle = throttle + (target_rpm - rpm) // 100
                 # the target should not go below MIN_THROTTLE, or above MAX_THROTTLE.
                 # this is taken care of in the set_throttle_for_motor function.
                 self.set_throttle_for_motor(i, target_throttle)
@@ -260,7 +251,6 @@ class Drone:
     def get_avg_rpm(self) -> float:
         return sum(self.rpm[:self.NUM_OF_MOTORS]) / self.NUM_OF_MOTORS
 
-       
     def get_rpm(self) -> list:
         return self.rpm 
 
@@ -306,7 +296,6 @@ def test_rpm():
 
     bf.set_rpm_worker_on(False)
 
-
 if __name__ == '__main__':
     print('LAUNCHED AS MAIN - COMMENCING TESTING...')
     input('Confirm start: ')
@@ -316,3 +305,5 @@ if __name__ == '__main__':
     test_throttle()
     test_rpm()
     bf.set_arming(False)
+    
+    print('Testing completed.')
