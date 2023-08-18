@@ -1,25 +1,32 @@
-import os, time
+import os, time, subprocess, sys
 from threading import Thread
 from autobahn.twisted.websocket import WebSocketServerProtocol
 from twisted.internet import reactor
 from autobahn.twisted.websocket import WebSocketServerFactory
+from numbers import Number
 
 
 # makes use of websocket to communicate with patched betaflight-configurator,
 # its control of RPM wrapped and abstracted.
 class Drone:
+    BF_DEFAULT_PATH_LINUX = 'bf-conf/debug/betaflight-configurator/linux64/betaflight-configurator' 
+    BF_DEFAULT_PATH_WINDOWS = 'bf-conf/debug/betaflight-configurator/win64/betaflight-configurator.exe'
+    path:str = None
+
     NUM_OF_MOTORS:int = 4 
     MIN_THROTTLE:int = 1000
     # Drone gives about 200g lift at this throttle < 280g, its weight.
     MAX_THROTTLE:int = 1525
+
+    armed:bool = False
     throttle:list = [MIN_THROTTLE] * NUM_OF_MOTORS      # motor indices run from 0 
-    armed = False
-    rpm = None
-    power = None
-    target = [0] * NUM_OF_MOTORS # rpm target
-    rpm_control_on = False # rpm_worker only responds when this is set to True.
-    conn = False    # connectivity to betaflight-configurator 
-    rpm_thread = None
+    rpm:list = None
+    power:list = None
+
+    rpm_control_on:bool = False # rpm_worker only responds when this is set to True.
+    target:list = [0] * NUM_OF_MOTORS # rpm target
+    conn:bool = False    # connectivity to betaflight-configurator 
+    rpm_thread:Thread = None
 
     class ServerProtocol(WebSocketServerProtocol):
         # try not to overload __init__, in which the protocol may do weird stuff.
@@ -117,24 +124,46 @@ class Drone:
     def send(self, data):
         self.ServerProtocol.send(data)
 
-    # quiet: redirect betaflight-configurator STDERR to /dev/null.
-    # NOTE: THIS WILL BREAK ON WINDOWS.
+    # quiet: redirect betaflight-configurator STDOUT to /dev/null. 
     def launch_betaflight(self, path: str = None, quiet:bool = True):
-        self.path = path
+        # guess a path if not provided.
         if not path:
-            return
-        
-        param = '&'
-        if quiet:
-            param = '> /dev/null 2>&1 &'
+            # first need to locate the parent folder of bf-conf.
+            dirname = os.getcwd()
+            for level in range(4): # only attempt to search three levels up.
+                if 'bf-conf' in os.listdir(dirname):
+                    break
+                dirname = os.path.dirname(dirname)
 
-        os.system(path + " " + param)
+            if 'bf-conf' in os.listdir(dirname):
+                if 'linux' in sys.platform:
+                    path = os.path.join(dirname,
+                                        self.BF_DEFAULT_PATH_LINUX)
+                elif 'win' in sys.platform:
+                    path = os.path.join(dirname,
+                                    self.BF_DEFAULT_PATH_WINDOWS)
+                else:
+                    print('Drone::launch_betaflight: No betaflight-configurator provided, and sys.platform not recognised. Skipping launch.')
+                    return
+            else:
+                print('Drone::launch_betaflight: No betaflight-configurator provided, and auto-detect failed. Skipping launch.')
+                return
+
+        self.path = path
+        
+        if quiet:
+            subprocess.Popen([path],
+                            stdout=subprocess.DEVNULL,
+                            stderr=subprocess.STDOUT,
+                            start_new_session = True)   # so betaflight is not killed along python
+        else:
+            subprocess.Popen([path], start_new_session = True)
 
     def close(self):
         self.set_rpm_worker_on(False)
         self.set_arming(False)
 
-    def set_arming(self, armed:bool = False, block = True):
+    def set_arming(self, armed:bool = False, block:bool = True):
         if not armed:
             self.set_rpm_worker_on(False)
 
@@ -181,21 +210,27 @@ class Drone:
 
     # target: int will set all motors to the same rpm.
     # block = True: The function will block until all RPMs are different from their target within pm RPM_TOLERANCE.
-    def set_rpm(self, target:int|list, block:bool = False):
+    # hold_throttle = True: When code exits from block, it brings down rpm_worker to keep throttle constant.
+    # * only takes effect if code is blocking.
+    def set_rpm(self, target:Number|list, block:bool = True, hold_throttle = False):
         RPM_TOLERANCE:float = 150
-        if type(target) is int:
+        if isinstance(target, Number):
             target = [target] * self.NUM_OF_MOTORS
 
         for i in range(len(target)):
             self.set_rpm_for_motor(i, target[i])
 
-        if block:
+        # if rpm_control_on is False, then block will certainly never exit, so ignore
+        if self.rpm_control_on and block:
             rpm = self.get_rpm()
             abs_diff = [abs(target[i] - rpm[i]) for i in range(self.NUM_OF_MOTORS)]
             while any(diff > RPM_TOLERANCE for diff in abs_diff):
                 time.sleep(0.5)
                 rpm = self.get_rpm()
                 abs_diff = [abs(target[i] - rpm[i]) for i in range(self.NUM_OF_MOTORS)]
+
+            if hold_throttle:
+                self.set_rpm_worker_on(False)
 
     # start / stop rpm_worker in its own thread.
     # must be called explicitly for rpm control to take over.
@@ -299,7 +334,7 @@ def test_rpm():
 if __name__ == '__main__':
     print('LAUNCHED AS MAIN - COMMENCING TESTING...')
     input('Confirm start: ')
-    bf = Drone(path = '../../bf-conf/debug/betaflight-configurator/linux64/betaflight-configurator')
+    bf = Drone()
     test_switch()
     bf.set_arming(True)
     test_throttle()

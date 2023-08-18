@@ -12,7 +12,7 @@ class BFLive:
         # TODO: workaround
         self.arduino = utils.Arduino(port = '/dev/ttyACM0')
         self.plotter = utils.Plotter()
-        self.quad = drone.Drone('../bf-conf/debug/betaflight-configurator/linux64/betaflight-configurator')
+        self.quad = drone.Drone()
 
         self.t_str = datetime.now().strftime('%m-%d')
         self.timestamp = time.time()    # timestamp acts as a UUID for this set of data

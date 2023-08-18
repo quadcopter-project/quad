@@ -16,12 +16,12 @@ class BFLive:
     PLOT_NCOLS: int = 2
 
     # bf_name: path to betaflight-configurator executable.
-    def __init__(self, path: str, bf_name: str):
+    def __init__(self, path: str, bf_name: str = None):
         print('BFLive::__init__: initialising.')
         self.path = path
+        self.quad = drone.Drone(bf_name)
         self.ardman = ard.ArdManager()
         self.plotter = plotter.Plotter(self.PLOT_NROWS, self.PLOT_NCOLS, self.PLOT_LAYOUT)
-        self.quad = drone.Drone(bf_name)
 
         self.t_str = datetime.now().strftime('%m-%d')
         self.timestamp = time.time()    # timestamp acts as a UUID for this set of data
@@ -77,8 +77,8 @@ class BFLive:
                           target_rpm = target_rpm,
                           timestamp = self.timestamp,
                           platform = self.PLATFORM)
-        self.quad.set_rpm_worker_on(False)
-        self.quad.set_throttle(0)
+
+        input('Confirm continue: ')
 
         print(f'BFLive::record: taring all load cells.')
         self.ardman.tare(block = True)
@@ -107,6 +107,10 @@ class BFLive:
         data2.load(file)
         print(f'BFLive::record: dumped == original: {data2 == data}')
 
+        self.quad.set_rpm_worker_on(False)
+        self.quad.set_throttle(0)
+
+
     def close(self):
         self.quad.set_rpm_worker_on(False)
         self.quad.set_arming(False)
@@ -116,7 +120,7 @@ if __name__ == '__main__':
     rec_t = 60
     transient = 10
     rec_path = '../raw/bf2/'
-    live = BFLive(path = rec_path, bf_name = '../bf-conf/debug/betaflight-configurator/linux64/betaflight-configurator')
+    live = BFLive(path = rec_path)
     while True:
         print('betaflight-2 testing')
         choice = input('(m)ove, (l)evel, (h)eight, (s)tart: ')
