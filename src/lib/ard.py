@@ -274,11 +274,14 @@ class Arduino:
 
     line: str = ""
 
-    def __init__(self, port:str, baud:int = 230400):
+    # reset is not necessary, but could be just a precaution to take.
+    # NOTE: if not reset, the LOAD CELLS WILL REMAIN UNTARED.
+    def __init__(self, port:str, baud:int = 230400, reset: bool = True):
         self.port = port
         self.baud = baud
         self.open(port, baud = baud) 
-        self.reset()
+        if reset:
+            self.reset()
 
         self.get_dev_info()
         self.line = self.readline() # populate a first line
