@@ -78,6 +78,9 @@ class BFLive:
                           timestamp = self.timestamp,
                           platform = self.PLATFORM)
 
+        if isinstance(target_rpm, Number):
+            target_rpm = [target_rpm] * self.quad.NUM_OF_MOTORS
+
         input('Confirm continue: ')
 
         print(f'BFLive::record: taring all load cells.')
