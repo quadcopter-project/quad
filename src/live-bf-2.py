@@ -71,15 +71,15 @@ class BFLive:
     # target_rpm can be of multiple types, set_rpm function deal with this automatically. 
     def record(self, height: float, target_rpm: Number|list, rec_t: float, transient:float):
         print(f'BFLive::record: preparing for height = {height}, target_rpm = {target_rpm}, rec_t = {rec_t}')
+        if isinstance(target_rpm, Number):
+            target_rpm = [target_rpm] * self.quad.NUM_OF_MOTORS
+
         filename = f'bf_{height}_{target_rpm}_{self.t_str}_{self.cnt}.json'
         file = os.path.join(self.path, filename)
         data = utils.Data(height = height,
                           target_rpm = target_rpm,
                           timestamp = self.timestamp,
                           platform = self.PLATFORM)
-
-        if isinstance(target_rpm, Number):
-            target_rpm = [target_rpm] * self.quad.NUM_OF_MOTORS
 
         input('Confirm continue: ')
 
