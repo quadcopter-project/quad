@@ -166,6 +166,7 @@ def bin_by_w_plot(paths: str|list, endpoints: list, fig: str = None):
 
         if data.height is None:
             print(':bin_by_w_plot: height in file {filename} is undefined. Skipping.')
+            continue
 
         height, bins = bin_by_w(data, endpoints)
         bins_list.append(bins)
