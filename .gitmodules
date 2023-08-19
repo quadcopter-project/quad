@@ -1,9 +1,12 @@
 [submodule "bf-conf"]
 	path = bf-conf
 	url = https://github.com/NotQuiteAwake/betaflight-configurator
+    update = merge
 [submodule "raw"]
 	path = raw
 	url = https://github.com/NotQuiteAwake/quad-raw
+    update = merge
 [submodule "archive"]
 	path = archive
 	url = https://github.com/NotQuiteAwake/quad-arch
+    update = merge
