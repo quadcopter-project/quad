@@ -18,6 +18,7 @@ import statistics as st
 
 from utils import Data
 from math import sqrt
+from numbers import Number
 
 
 """
@@ -81,14 +82,14 @@ def w2_norm_plot(name: str, fig: str = None, fl = None, fr = None):
 
 # process all Data files in a path, for each find a mean CL value,
 # then plot that against height.
-def w2_norm_height_plot(path: str, fig: str = None, fl = None, fr = None):
+def w2_norm_height_plot(paths: str|list, fig: str = None, fl = None, fr = None):
     plt.ioff()
     plt.clf()
     height = []
     lift_const = []
     lift_const_err = []
 
-    for name in get_data_files(path):
+    for name in get_data_files(paths):
         data = Data()
         data.load(name)
         if data.height is None:
@@ -152,13 +153,13 @@ def bin_by_w(data: Data, endpoints: list) -> tuple[float, list]:
 
 # bin the lift values by w and for each bin, plot a scatter plot of lift versus distance.
 # different bins distinguished by colour.
-def bin_by_w_plot(path: str, endpoints: list, fig: str = None):
+def bin_by_w_plot(paths: str|list, endpoints: list, fig: str = None):
     plt.clf()
 
     bins_list = list()
     height_list = list()
 
-    for name in get_data_files(path):
+    for name in get_data_files(paths):
         print(f':bin_by_w_plot: Processing {name}')
         data = Data() 
         data.load(name)
@@ -219,16 +220,14 @@ BETAFLIGHT processing functions
 # rpm_range: lower (rpm_range[0]) and upper (rpm_range[1]) limit for rpm range of interest.
 # return -> result_by_batch: dict = (batch -> result_by_rpm), where
 #   result_by_rpm: dict = (target_rpm -> frames)
-def get_results_by_batch(path: str, heights: float|list = None, rpm_range: tuple = None) -> dict:
-    if type(heights) is float or type(heights) is int:
+def get_results_by_batch(paths: str|list, heights: Number|list = None, rpm_range: tuple = None) -> dict:
+    if isinstance(heights, Number):
         heights = [heights]
 
     result_by_batch = dict()   # tuple(height, timestamp) -> list(result_by_rpm: dict)
     # for each result_by_rpm: rpm[4] -> list(frames: Frame)
     # group all with the same height into a series, in which group those with the same target into the same point which we do statistics on.
-    for name in get_data_files(path):
-        data = Data()
-        data.load(name)
+    for data in get_data_list(paths):
         if 'betaflight' not in data.platform:
             print(f':rpm2_lift_plot: Platform mismatch in file {name}: expected "betaflight", got {data.platform}.')
             continue
@@ -279,11 +278,11 @@ def get_results_by_batch(path: str, heights: float|list = None, rpm_range: tuple
 # calls get_results_by_batch to process data.
 # fig: path to save lift against rpm2 plots.
 # fig2: path to save CL against height plot.
-def rpm2_lift_plot(path: str, heights: float|list = None, rpm_range: list = None, fig: str = None, fig2: str = None):
+def rpm2_lift_plot(paths: str|list, heights: Number|list = None, rpm_range: list = None, fig: str = None, fig2: str = None):
     plt.ioff()
     plt.clf()
 
-    result_by_batch = get_results_by_batch(path, heights, rpm_range)
+    result_by_batch = get_results_by_batch(paths, heights, rpm_range)
 
     # coefficient of lift plot variables
     x_cl, y_cl, yerr_cl = ([] for i in range(3))
@@ -353,7 +352,7 @@ def rpm2_lift_plot(path: str, heights: float|list = None, rpm_range: list = None
 
 
 # plot lift(z) against RPM(y) and height(x) in 3D.
-def rpm_height_3d_plot(path: str, heights: float|list = None, rpm_range: list = None, fig: str = None):
+def rpm_height_3d_plot(paths: str|list, heights: Number|list = None, rpm_range: list = None, fig: str = None):
     plt.ioff()
     
     figure = plt.figure()
@@ -364,7 +363,7 @@ def rpm_height_3d_plot(path: str, heights: float|list = None, rpm_range: list = 
     rpm_y = []
     mass_z = []
         
-    results_by_batch = get_results_by_batch(path, heights, rpm_range)
+    results_by_batch = get_results_by_batch(paths, heights, rpm_range)
     for batch, results_by_rpm in results_by_batch.items():
         height, timestamp = batch   # unpack a batch
         # same height, same rpm...
@@ -393,36 +392,6 @@ def rpm_height_3d_plot(path: str, heights: float|list = None, rpm_range: list = 
     plt.clf()
 
 
-# filter a list with z-values, IQR and percentile limit.
-# if none of these are specified, no values are filtered.
-# return -> indices: list. indices of outlier items.
-def outlier_filter(x: list, z: float = None, iqr_factor: float = None, percentile_limit: float = 0) -> list:
-    if (percentile_limit >= 100
-        or (z and z < 0)
-        or (iqr_factor and iqr_factor < 0)):
-        raise ValueError(':outlier_filter: Invalid statistical parameters supplied.')
-
-    indices = list()
-    mean = st.mean(x)
-    stdev = st.stdev(x)
-    q3, q1 = np.percentile(x, [75, 25])
-    iqr = q3 - q1
-    percentile_l, percentile_r = np.percentile(x, [0 + percentile_limit, 100 - percentile_limit])
-    
-    for i in range(len(x)):
-        val = x[i]
-        # only need to satisfy one of these criteria to be removed.
-        if z is not None and stdev and abs(val - mean) / stdev > z:
-            indices.append(i)
-        elif (iqr_factor is not None
-            and (val > q3 + iqr_factor * iqr or val < q1 - iqr_factor * iqr)):
-            indices.append(i)
-        elif val > percentile_r or val < percentile_l:
-            indices.append(i)
-        
-    return indices 
-
-
 """
 LOAD CELL processing functions
 """
@@ -431,16 +400,11 @@ LOAD CELL processing functions
 # preview_data = True: show every data object before processing them.
 # fig1: straight line fit of measured (corrected mass) against accurately determined mass.
 # fig2: residue of fit in fig 1.
-def mass_calibration_curve(paths: list|str, preview_data: bool = False, fig1: str = None, fig2: str = None):
+def mass_calibration_curve(paths: str|list, preview_data: bool = False, fig1: str = None, fig2: str = None):
     plt.ioff()
     plt.clf()
 
-    data_files = list()
-
-    if type(paths) is str:
-        paths = [paths]
-    for path in paths:
-        data_files.extend(get_data_files(path))
+    data_files = get_data_files(paths)
 
     std_list = list()   # mass from balance readings
     measured_list = list()  # raw measured mass
@@ -500,9 +464,40 @@ def mass_calibration_curve(paths: list|str, preview_data: bool = False, fig1: st
     plt.show()
     plt.clf()
 
+
 """
 GENERIC processing functions
 """
+# filter a list with z-values, IQR and percentile limit.
+# if none of these are specified, no values are filtered.
+# return -> indices: list. indices of outlier items.
+def outlier_filter(x: list, z: float = None, iqr_factor: float = None, percentile_limit: float = 0) -> list:
+    if (percentile_limit >= 100
+        or (z and z < 0)
+        or (iqr_factor and iqr_factor < 0)):
+        raise ValueError(':outlier_filter: Invalid statistical parameters supplied.')
+
+    indices = list()
+    mean = st.mean(x)
+    stdev = st.stdev(x)
+    q3, q1 = np.percentile(x, [75, 25])
+    iqr = q3 - q1
+    percentile_l, percentile_r = np.percentile(x, [0 + percentile_limit, 100 - percentile_limit])
+    
+    for i in range(len(x)):
+        val = x[i]
+        # only need to satisfy one of these criteria to be removed.
+        if z is not None and stdev and abs(val - mean) / stdev > z:
+            indices.append(i)
+        elif (iqr_factor is not None
+            and (val > q3 + iqr_factor * iqr or val < q1 - iqr_factor * iqr)):
+            indices.append(i)
+        elif val > percentile_r or val < percentile_l:
+            indices.append(i)
+        
+    return indices 
+
+
 # remove elements at positions {indices} in list {x}
 # return -> filtered list of x
 def remove_by_indices(x: list, indices: list) -> list:
@@ -517,19 +512,27 @@ def in_range(val: float, l: float = None, r: float = None) -> bool:
 
 
 # get a list of the paths to all the valid files (json) in a folder
-# path: the folder to look at, non-recursive.
+# paths: the folder(s) to look at, non-recursive.
 # return -> list of paths to valid files.
-def get_data_files(path: str) -> list:
-    return [os.path.join(path, filename) 
-            for filename in os.listdir(path) 
-            if os.path.isfile(os.path.join(path, filename))
-            and filename.split('.')[-1] == 'json']
+def get_data_files(paths: str|list) -> list:
+    data_files = list() 
+    if type(paths) is str:
+        paths = [paths]
+
+    for path in paths:
+        data_files.extend(
+                [os.path.join(path, filename) 
+                for filename in os.listdir(path) 
+                if os.path.isfile(os.path.join(path, filename))
+                and filename.split('.')[-1] == 'json']
+                )
+    return data_files
 
 
-# return a list of Data objects loaded from json files in {path}.
-def get_data_list(path: str) -> list:
+# return a list of Data objects loaded from json files in {paths}.
+def get_data_list(paths: str|list) -> list:
     data_list = list()
-    data_files = get_data_files(path)
+    data_files = get_data_files(paths)
     for name in data_files:
         data = Data()
         data.load(name)

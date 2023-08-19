@@ -208,7 +208,7 @@ class Drone:
             self.set_throttle_for_motor(i, throttle[i])
 
     # only function that accesses self.target directly 
-    def set_rpm_for_motor(self, ind:int, target:int):
+    def set_rpm_for_motor(self, ind:int, target:Number):
         if (ind > self.NUM_OF_MOTORS):
             print('Drone::set_rpm_for_motor: maximum motor index exceeded.')
             return
