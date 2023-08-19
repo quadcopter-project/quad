@@ -1,6 +1,5 @@
 const int DEV_ID = 0;
 bool isOperating = false;
-
 // MOTOR
 #include <AccelStepper.h>
 const int NUM_MOTOR = 3;
@@ -40,8 +39,8 @@ const int ACCEL_DELAY = 1500;    // so that system can settle down.
 
 // Utitilies for reading and parsing Serial input
 const int MAX_STR_LEN = 50;
-char str[MAX_STR_LEN];
-char substr[MAX_STR_LEN];
+char str[MAX_STR_LEN + 5];
+char substr[MAX_STR_LEN + 5];
 int len = 0;
 int sublen = 0;
 int pos = 0;
@@ -49,24 +48,23 @@ int pos = 0;
 void readline() {
     len = sublen = pos = 0;
     char ch = Serial.read();
-    while (ch != '\n') {
+    while (ch != '\n' && len < MAX_STR_LEN) {
         str[len++] = ch;
         ch = Serial.read();
     }
     str[len] = '\0';
 }
 
-void next_substr(char* _substr) {
+void next_substr() {
     sublen = 0;
     while (pos < len) {
         if (str[pos] == ' ') {
             pos++;
             break;
         }
-        _substr[sublen] = substr[sublen] = str[pos++];
-        sublen++;
+        substr[sublen++] = str[pos++];
     }
-    _substr[sublen] = substr[sublen] = '\0';
+    substr[sublen] = '\0';
 }
 
 int substr_to_int() {
@@ -123,7 +121,7 @@ inline double getDistance() {
 
 
 // Accelerometer MMA8451 functions
-inline void getAccel(double* accel) {
+inline void getAccel(double accel[]) {
     mma.read();
     sensors_event_t event;
     mma.getEvent(&event);
@@ -132,7 +130,7 @@ inline void getAccel(double* accel) {
     accel[2] = event.acceleration.z;
 }
 
-inline void getMeanAccel(double* accel) {
+inline void getMeanAccel(double accel[]) {
     delay(ACCEL_DELAY);
     accel[0] = accel[1] = accel[2] = 0;
     double _accel[3];
@@ -176,8 +174,7 @@ inline void blockedRun() {
 
         if (Serial.available()) {
             readline();
-            char substr[20];
-            next_substr(substr);
+            next_substr();
             // no need to call blockedRun() again below, since
             // we are still in while loop, so it will move til stop if needed.
             if (strcmp(substr, "STOP")) stop();
@@ -386,14 +383,13 @@ void setup() {
 void loop() {
     if (Serial.available()) {
         readline();
-        char substr[20];
-        next_substr(substr);
+        next_substr();
 
         if (strcmp(substr, "IDEN") == 0) {
             Serial.print("IDEN "); Serial.println(DEV_ID);
         } else if (strcmp(substr, "MOVE") == 0) {
             for (int i = 0; i < NUM_MOTOR; i++) {
-                next_substr(substr);
+                next_substr();
                 long steps = substr_to_int();
                 motor[i].move(steps);
             }
@@ -405,7 +401,7 @@ void loop() {
         } else if (strcmp(substr, "HEIGHT") == 0) {
             stop();
             blockedRun();
-            next_substr(substr);
+            next_substr();
             double height = substr_to_double();
             setHeight(height);
         } else if (strcmp(substr, "STOP") == 0) {
@@ -416,5 +412,11 @@ void loop() {
 
     run();
     report();
-    delay(100);
+    delay(200);
+
+    if(!Serial) {
+        Serial.end();
+        delay(200);
+        Serial.begin(230400);
+    }
 }
