@@ -151,13 +151,20 @@ class Drone:
 
         self.path = path
         
+        kwargs = dict()
         if quiet:
-            subprocess.Popen([path],
-                            stdout=subprocess.DEVNULL,
-                            stderr=subprocess.STDOUT,
-                            start_new_session = True)   # so betaflight is not killed along python
-        else:
-            subprocess.Popen([path], start_new_session = True)
+            kwargs.update(stdout = subprocess.DEVNULL,
+                          stderr = subprocess.STDOUT)
+
+        if 'linux' in sys.platform:
+            kwargs.update(start_new_session=True)
+
+        elif 'win' in sys.platform:
+            CREATE_NEW_PROCESS_GROUP = 0x00000200
+            DETACHED_PROCESS = 0x00000008
+            kwargs.update(creationflags=DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP)
+
+        subprocess.Popen([path], **kwargs)
 
     def close(self):
         self.set_rpm_worker_on(False)
