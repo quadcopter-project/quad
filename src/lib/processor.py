@@ -227,7 +227,10 @@ def get_results_by_batch(paths: str|list, heights: Number|list = None, rpm_range
     result_by_batch = dict()   # tuple(height, timestamp) -> list(result_by_rpm: dict)
     # for each result_by_rpm: rpm[4] -> list(frames: Frame)
     # group all with the same height into a series, in which group those with the same target into the same point which we do statistics on.
-    for data in get_data_list(paths):
+    for name in get_data_files(paths):
+        data = Data()
+        data.load(name)
+
         if 'betaflight' not in data.platform:
             print(f':rpm2_lift_plot: Platform mismatch in file {name}: expected "betaflight", got {data.platform}.')
             continue
