@@ -54,14 +54,12 @@ def w2_normalisation(data: Data, fl:float = None, fr:float = None) -> tuple[list
 
 
 # plot w2_normalisation result for a single Data dump.
-def w2_norm_plot(name: str, fig: str = None, fl = None, fr = None):
+def w2_norm_plot(data: Data, fig: str = None, fl = None, fr = None):
     plt.ioff()
     plt.clf()
-    data = Data()
-    data.load(name)
 
     if data.height is None:
-        print(f':w2_norm_plot: data imported from {name} does not have a height defined; Abort.')
+        print(f':w2_norm_plot: data provided does not have a height defined; Abort.')
         return
 
     x, y = w2_normalisation(data, fl = fl, fr = fr)
@@ -83,21 +81,20 @@ def w2_norm_plot(name: str, fig: str = None, fl = None, fr = None):
 
 # process all Data files in a path, for each find a mean CL value,
 # then plot that against height.
-def w2_norm_height_plot(paths: str|list, fig: str = None, fl = None, fr = None):
+def w2_norm_height_plot(data_list: list, fig: str = None, fl = None, fr = None):
     plt.ioff()
     plt.clf()
     height = []
     lift_const = []
     lift_const_err = []
 
-    for name in get_data_files(paths):
-        data = Data()
-        data.load(name)
+    for data in data_list:
         if data.height is None:
-            print(f':w2_norm_height_plot: file {name} have ill-defined height. Skipped.')
+            print(f('(W) w2_norm_height_plot: data with timestamp '
+                  '{data.timestamp} have ill-defined height.'))
             continue
 
-        print(f':w2_norm_height_plot: processing {name}')
+        print(f':w2_norm_height_plot: processing {data.timestamp}')
         norm_t, norm_val = w2_normalisation(data, fl, fr)
         height.append(data.height)
         lift_const.append(st.mean(norm_val)) 
@@ -152,20 +149,18 @@ def bin_by_w(data: Data, endpoints: list) -> list:
 
 # bin the lift values by w and for each bin, plot a scatter plot of lift versus distance.
 # different bins distinguished by colour.
-def bin_by_w_plot(paths: str|list, endpoints: list, fig: str = None):
+def bin_by_w_plot(data_list: list, endpoints: list, fig: str = None):
     plt.clf()
 
     # height -> bins 
     bins_by_height = dict()
 
-    for name in get_data_files(paths):
-        print(f':bin_by_w_plot: Processing {name}')
-        data = Data() 
-        data.load(name)
+    for data in data_list:
+        print(f':bin_by_w_plot: Processing {data.timestamp}')
         height = data.height
 
         if height is None:
-            print(f':bin_by_w_plot: height in file {name} is undefined. Skipping.')
+            print(f'(W) bin_by_w_plot: height in {data.timestamp} is undefined.')
             continue
 
         bins = bin_by_w(data, endpoints)
@@ -228,19 +223,16 @@ BETAFLIGHT processing functions
 # rpm_range: lower (rpm_range[0]) and upper (rpm_range[1]) limit for rpm range of interest.
 # return -> result_by_batch: dict = (batch -> result_by_rpm), where
 #   result_by_rpm: dict = (target_rpm -> frames)
-def get_results_by_batch(paths: str|list, heights: Number|list = None, rpm_range: tuple = None) -> dict:
+def get_results_by_batch(data_list: list, heights: Number|list = None, rpm_range: tuple = None) -> dict:
     if isinstance(heights, Number):
         heights = [heights]
 
     result_by_batch = dict()   # tuple(height, timestamp) -> list(result_by_rpm: dict)
     # for each result_by_rpm: rpm[4] -> list(frames: Frame)
     # group all with the same height into a series, in which group those with the same target into the same point which we do statistics on.
-    for name in get_data_files(paths):
-        data = Data()
-        data.load(name)
-
+    for data in data_list:
         if 'betaflight' not in data.platform:
-            print(f':rpm2_lift_plot: Platform mismatch in file {name}: expected "betaflight", got {data.platform}.')
+            print(f':rpm2_lift_plot: Platform mismatch in file {data.timestamp}: expected "betaflight", got {data.platform}.')
             continue
 
         height = data.height
@@ -253,7 +245,7 @@ def get_results_by_batch(paths: str|list, heights: Number|list = None, rpm_range
         if rpm_range and (mean_target_rpm < rpm_range[0] or mean_target_rpm > rpm_range[1]):
             continue
         
-        print(f':rpm2_lift_plot: Processing file {name}.')
+        print(f':rpm2_lift_plot: Processing file {data.timestamp}.')
         # NOTE: uncomment this hack if you want differentiating by timestamp...
         # height = data.timestamp
         if batch not in result_by_batch.keys():
@@ -291,11 +283,15 @@ def get_results_by_batch(paths: str|list, heights: Number|list = None, rpm_range
 # calls get_results_by_batch to process data.
 # fig: path to save lift against rpm2 plots.
 # fig2: path to save CL against height plot.
-def rpm2_lift_plot(paths: str|list, heights: Number|list = None, rpm_range: list = None, fig: str = None, fig2: str = None):
+def rpm2_lift_plot(data_list: list,
+                   heights: Number|list = None,
+                   rpm_range: list = None,
+                   fig: str = None,
+                   fig2: str = None):
     plt.ioff()
     plt.clf()
 
-    result_by_batch = get_results_by_batch(paths, heights, rpm_range)
+    result_by_batch = get_results_by_batch(data_list, heights, rpm_range)
 
     # coefficient of lift plot variables
     x_cl, y_cl, yerr_cl = ([] for i in range(3))
@@ -347,7 +343,6 @@ def rpm2_lift_plot(paths: str|list, heights: Number|list = None, rpm_range: list
     plt.show()
     plt.clf()
 
-    # TODO: TEST
     for i in range(len(x_cl)):
         plt.errorbar(x_cl[i], y_cl[i],
                      yerr = yerr_cl[i],
@@ -365,7 +360,7 @@ def rpm2_lift_plot(paths: str|list, heights: Number|list = None, rpm_range: list
 
 
 # plot lift(z) against RPM(y) and height(x) in 3D.
-def rpm_height_3d_plot(paths: str|list, heights: Number|list = None, rpm_range: list = None, fig: str = None):
+def rpm_height_3d_plot(data_list: list, heights: Number|list = None, rpm_range: list = None, fig: str = None):
     plt.ioff()
     
     figure = plt.figure()
@@ -376,7 +371,7 @@ def rpm_height_3d_plot(paths: str|list, heights: Number|list = None, rpm_range: 
     rpm_y = []
     mass_z = []
         
-    results_by_batch = get_results_by_batch(paths, heights, rpm_range)
+    results_by_batch = get_results_by_batch(data_list, heights, rpm_range)
     for batch, results_by_rpm in results_by_batch.items():
         height, timestamp = batch   # unpack a batch
         # same height, same rpm...
@@ -408,11 +403,11 @@ def rpm_height_3d_plot(paths: str|list, heights: Number|list = None, rpm_range: 
 """
 LOAD CELL processing functions
 """
-# TODO: make this paths behaviour global.
 # paths: list of all paths to use to read data files. str: One single path.
 # preview_data = True: show every data object before processing them.
 # fig1: straight line fit of measured (corrected mass) against accurately determined mass.
 # fig2: residue of fit in fig 1.
+# NOTE: this function CANNOT take a data_list input, since it reads the mass from the file name. Unfortunately Data was not built with mass calibration in mind.
 def mass_calibration_curve(paths: str|list, preview_data: bool = False, fig1: str = None, fig2: str = None):
     plt.ioff()
     plt.clf()
@@ -572,10 +567,10 @@ def get_data_files(paths: str|list) -> list:
 
     for path in paths:
         data_files.extend(
-                [os.path.join(path, filename) 
-                for filename in os.listdir(path) 
-                if os.path.isfile(os.path.join(path, filename))
-                and filename.split('.')[-1] == 'json']
+                [os.path.join(path, name) 
+                for name in os.listdir(path) 
+                if os.path.isfile(os.path.join(path, name))
+                and name.split('.')[-1] == 'json']
                 )
     return data_files
 

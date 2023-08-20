@@ -186,7 +186,7 @@ class Data:
         return None
 
     def __getitem__(self, key) -> Frame:
-        return self.frames[key] 
+        return self.frames[key]
 
     # AUXILIARY functions (public)
     # re-initialise this instance.
