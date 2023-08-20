@@ -100,13 +100,9 @@ def w2_norm_height_plot(data_list: list, fig: str = None, fl = None, fr = None):
         lift_const.append(st.mean(norm_val)) 
         lift_const_err.append(st.stdev(norm_val))
 
-    plt.errorbar(height,
-                 lift_const,
-                 yerr = lift_const_err,
-                 marker = 'x',
-                 markersize = 3,
-                 ls = '',
-                 elinewidth = 1)
+    errorbar_plot(height, lift_const,
+                  yerr = lift_const_err)
+
     plt.title('Cl against height')
     plt.xlabel('height / cm')
     plt.ylabel('Coefficient of lift / g s^2')
@@ -223,7 +219,7 @@ BETAFLIGHT processing functions
 # rpm_range: lower (rpm_range[0]) and upper (rpm_range[1]) limit for rpm range of interest.
 # return -> result_by_batch: dict = (batch -> result_by_rpm), where
 #   result_by_rpm: dict = (target_rpm -> frames)
-def get_results_by_batch(data_list: list, heights: Number|list = None, rpm_range: tuple = None) -> dict:
+def get_result_by_batch(data_list: list, heights: Number|list = None, rpm_range: tuple = None) -> dict:
     if isinstance(heights, Number):
         heights = [heights]
 
@@ -245,7 +241,7 @@ def get_results_by_batch(data_list: list, heights: Number|list = None, rpm_range
         if rpm_range and (mean_target_rpm < rpm_range[0] or mean_target_rpm > rpm_range[1]):
             continue
         
-        print(f':rpm2_lift_plot: Processing file {data.timestamp}.')
+        print(f'get_result_by_batch: Processing file {data.timestamp}.')
         # NOTE: uncomment this hack if you want differentiating by timestamp...
         # height = data.timestamp
         if batch not in result_by_batch.keys():
@@ -280,88 +276,179 @@ def get_results_by_batch(data_list: list, heights: Number|list = None, rpm_range
     return result_by_batch
 
 
-# calls get_results_by_batch to process data.
-# fig: path to save lift against rpm2 plots.
-# fig2: path to save CL against height plot.
-def rpm2_lift_plot(data_list: list,
-                   heights: Number|list = None,
-                   rpm_range: list = None,
-                   fig: str = None,
-                   fig2: str = None):
-    plt.ioff()
-    plt.clf()
+# calculates parameters for plotting a single line of lift against rpm
+# result_by_rpm: dict(target_rpm -> frames)
+# avg = True: take time-averaged mean_rpm and total_mass
+# rpm_sq = True: give rpm squared results instead of rpm.
+# return -> x, y, xerr, yerr
+#   where xerr = yerr = [0...] if avg is False.
+def lift_rpm(result_by_rpm: dict, avg: bool = True):
+    x, y, xerr, yerr = ([] for i in range(4))
+    # for each target in the series, do:
+    for target_rpm, frames in result_by_rpm.items():
+        rpm = [frame.get_mean_rpm() for frame in frames]
+        total_mass = [frame.get_total_mass() for frame in frames]
 
-    result_by_batch = get_results_by_batch(data_list, heights, rpm_range)
+        rpm_mean = st.mean(rpm)
+        rpm_stdev = st.stdev(rpm)
+        total_mass_mean = st.mean(total_mass)
+        total_mass_stdev = st.stdev(total_mass)
 
-    # coefficient of lift plot variables
-    x_cl, y_cl, yerr_cl = ([] for i in range(3))
-        
-    # for every series, do:
-    for (height, timestamp), result_by_rpm in result_by_batch.items():
-        x, y, xerr, yerr = ([] for i in range(4))
-        # for each target in the series, do:
-        for target_rpm, frames in result_by_rpm.items():
-            rpm = [frame.get_mean_rpm() for frame in frames]
-            total_mass = [frame.get_total_mass() for frame in frames]
-
-            rpm_mean = st.mean(rpm)
-            rpm_stdev = st.stdev(rpm)
-            total_mass_mean = st.mean(total_mass)
-            total_mass_stdev = st.stdev(total_mass)
-
-            x.append(rpm_mean ** 2)
-            xerr.append(rpm_stdev * 2)
+        if avg:
+            x.append(rpm_mean)
+            xerr.append(rpm_stdev)
             y.append(total_mass_mean)
             yerr.append(total_mass_stdev)
 
-        lines = plt.errorbar(x, y,
+        else:
+            for i in range(len(rpm)):
+                x.append(rpm[i])
+                y.append(total_mass[i])
+                xerr.append(0)
+                yerr.append(0)
+
+    return x, y, xerr, yerr
+
+
+# plot an errorbar plot.
+# linreg: perform linear regression and plot line of same color.
+# **kwargs will be passed into plt.errorbar().
+# useful for e.g. labelling the lines.
+def errorbar_plot(x: list, y: list, xerr: list = None, yerr: list = None, linreg: bool = False, **kwargs):
+    lines = plt.errorbar(x, y,
                          xerr = xerr,
                          yerr = yerr,
+                         **kwargs,
                          ls = '',
                          marker = 'x',
                          markersize = 3,
-                         label = f'h = {height} cm',
                          elinewidth = 1)
+
+    if linreg:
         # best fit line
         linecolor = lines[0].get_color()
         res = scipy.stats.linregress(x, y)
-        yy = [res.slope * xval + res.intercept for xval in x]
+        y_fit = [res.slope * xx + res.intercept for xx in x]
         
-        x_cl.append(height)
-        y_cl.append(res.slope)
-        yerr_cl.append(res.stderr)
-        
-        plt.plot(x, yy, color = linecolor, linewidth = 1)
-        
-        plt.xlabel('rpm^2 / min^-2')
-        plt.ylabel('lift / g')
-        plt.legend(ncol = 4, loc = 'upper left', fontsize = 5)
-        plt.title('Lift against rpm plot')
+        plt.plot(x, y_fit, color = linecolor, linewidth = 1)
+
+
+# calls get_result_by_batch to process data.
+# avg = True: take time-averaged mean_rpm and total_mass
+# fig: path to save lift against rpm2 plots.
+# kwargs: arguments to be passed to get_result_by_batch
+def lift_rpm2_plot(data_list: list, avg: bool = True, fig: str = None, **kwargs):
+    plt.ioff()
+    plt.clf()
+
+    result_by_batch = get_result_by_batch(data_list, **kwargs)
+
+    # for every series, do:
+    for (height, timestamp), result_by_rpm in result_by_batch.items():
+        x, y, xerr, yerr = lift_rpm(result_by_rpm, avg)
+        x = [xx ** 2 for xx in x]
+        xerr = [xe * 2 for xe in xerr]
+        errorbar_plot(x, y, xerr, yerr,
+                      linreg = True,
+                      label = f'h = {height} cm')
+       
+    plt.xlabel('rpm^2 / min^-2')
+    plt.ylabel('lift / g')
+    plt.legend(ncol = 4, loc = 'upper left', fontsize = 5)
+    plt.title('Lift against rpm plot')
 
     if fig:
         plt.savefig(fig)
     plt.show()
     plt.clf()
 
+
+def cl_w_plot(data_list: list, avg: bool = True, fig: str = None, **kwargs):
+    from math import sqrt
+
+    plt.ioff() 
+    plt.clf()
+
+    result_by_batch = get_result_by_batch(data_list, **kwargs)
+
+    for (height, timestamp), result_by_rpm in result_by_batch.items():
+        x, y, xerr, yerr = lift_rpm(result_by_rpm, avg)
+
+        yerr = [sqrt((ye * 1 / (xx**2)) ** 2
+                    + (xe * 2 * yy / (xx**3)) ** 2)
+                for xx, yy, xe, ye in zip(x, y, xerr, yerr)]
+        y = [y[i] / (x[i] ** 2) for i in range(len(x))] # CL
+
+        errorbar_plot(x, y,
+                      xerr, yerr,
+                      linreg = False,
+                      label = f'h = {height}cm')
+
+    plt.xlabel('rpm / min ^ -1')
+    plt.ylabel('CL / (g s^2)')
+    plt.legend(ncol = 4, loc = 'upper left', fontsize = 8)
+    plt.title('CL against rpm plot')
+
+    if fig:
+        plt.savefig(fig)
+
+    plt.show()
+    plt.clf()
+
+
+# plot a graph of CL (coefficient of lift) against height.
+# avg = True: take time-average of mean_rpm and total_mass.
+# log_graph = True: plot ln(CL) against height.
+def cl_height_plot(data_list: list, avg: bool = True, log_graph: bool = False, fig: str = None, **kwargs):
+    from math import log
+
+    plt.ioff()
+    plt.clf()
+
+    result_by_batch = get_result_by_batch(data_list, **kwargs)
+
+    # cl: coefficient of lift
+    x_cl, y_cl, yerr_cl = ([] for i in range(3))
+
+    for (height, timestamp), result_by_rpm in result_by_batch.items():
+        x, y, xerr, yerr = lift_rpm(result_by_rpm, avg)
+        x = [xx ** 2 for xx in x]
+
+        res = scipy.stats.linregress(x, y)
+        x_cl.append(height)
+        if log_graph:
+            y_cl.append(log(res.slope))
+            yerr_cl.append(res.stderr / res.slope)
+        else:
+            y_cl.append(res.slope)
+            yerr_cl.append(res.stderr)
+     
     for i in range(len(x_cl)):
-        plt.errorbar(x_cl[i], y_cl[i],
-                     yerr = yerr_cl[i],
-                     ls = '',
-                     marker = 'x',
-                     markersize = 3,
-                     elinewidth = 1)
-    plt.title('Cl against height')
+        errorbar_plot(x_cl[i], y_cl[i], yerr = yerr_cl[i])
+
+    if log_graph:
+        plt.title('ln(CL) against height')
+        plt.ylabel('ln(CL) / ln(g s^2)')
+        res = scipy.stats.linregress(x_cl, y_cl)
+        print(f'log fit: {res}')
+        y_fit = [x * res.slope + res.intercept for x in x_cl]
+        plt.plot(x_cl, y_fit)
+
+    else:
+        plt.title('CL against height')
+        plt.ylabel('CL / (g s^2)')
+
     plt.xlabel('height / cm')
-    plt.ylabel('Cl / (g s^2)')
-    if fig2:
-        plt.savefig(fig2)
+    if fig:
+        plt.savefig(fig)
     plt.show()
     plt.clf()
 
 
 # plot lift(z) against RPM(y) and height(x) in 3D.
-def rpm_height_3d_plot(data_list: list, heights: Number|list = None, rpm_range: list = None, fig: str = None):
+def rpm_height_3d_plot(data_list: list, avg:bool = True, fig: str = None, **kwargs):
     plt.ioff()
+    plt.clf()
     
     figure = plt.figure()
     ax = figure.add_subplot(projection = '3d')
@@ -371,22 +458,13 @@ def rpm_height_3d_plot(data_list: list, heights: Number|list = None, rpm_range: 
     rpm_y = []
     mass_z = []
         
-    results_by_batch = get_results_by_batch(data_list, heights, rpm_range)
-    for batch, results_by_rpm in results_by_batch.items():
-        height, timestamp = batch   # unpack a batch
-        # same height, same rpm...
-        for target_rpm, frames in results_by_rpm.items():
-            rpm = [frame.get_mean_rpm() for frame in frames]
-            total_mass = [frame.get_total_mass() for frame in frames]
-
-            rpm_mean = st.mean(rpm)
-            rpm_stdev = st.stdev(rpm)
-            total_mass_mean = st.mean(total_mass)
-            total_mass_stdev = st.stdev(total_mass)
-
+    result_by_batch = get_result_by_batch(data_list, **kwargs)
+    for (height, timestamp), result_by_rpm in result_by_batch.items():
+        y, z, yerr, zerr = lift_rpm(result_by_rpm, avg)
+        for i in range(len(y)):
             height_x.append(height)
-            rpm_y.append(rpm_mean)
-            mass_z.append(total_mass_mean)
+            rpm_y.append(y[i])
+            mass_z.append(z[i])
 
     ax.scatter(height_x, rpm_y, mass_z, marker = '^', s=5)
     ax.set_xlabel('Height / cm')

@@ -40,11 +40,15 @@ def gen_w2_norm_height_plot(paths: str|list):
     processor.w2_norm_height_plot(data_list, fig = fig, fl = 680, fr = 820)
 
 
-def gen_rpm2_lift_plot(paths: str|list):
+def gen_lift_rpm2_plot(paths: str|list):
     # fig = os.path.join(path, 'lift-w.pdf')
-    # fig2 = os.path.join(path, 'cl-height.pdf')
     data_list = processor.get_data_list(paths)
-    processor.rpm2_lift_plot(data_list, fig = fig, fig2 = fig2)
+    processor.lift_rpm2_plot(data_list, fig = fig)
+
+def gen_cl_height_plot(paths: str|list):
+    # fig = os.path.join(path, 'cl-height.pdf')
+    data_list = processor.get_data_list(paths)
+    processor.cl_height_plot(data_list, fig = fig)
 
 
 def gen_3d_plot(paths: str|list):
@@ -56,5 +60,8 @@ def gen_3d_plot(paths: str|list):
 if __name__ == '__main__':
     path = '../raw/bf/setup-1/'
     # gen_w2_norm_plots('../raw/snap/07-14/')
-    gen_rpm2_lift_plot(path)
+    # gen_lift_rpm2_plot(path)
+    # gen_3d_plot(path)
+    gen_cl_height_plot(path)
+    # gen_lift_rpm2_plot(path)
 
