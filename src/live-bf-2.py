@@ -85,6 +85,7 @@ class BFLive:
 
         print(f'BFLive::record: taring all load cells.')
         self.ardman.tare(block = True)
+        time.sleep(5)
         print('BFLive::record: load cells tared.')
 
         self.quad.set_rpm_worker_on(True)
