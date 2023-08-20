@@ -45,10 +45,11 @@ def w2_normalisation(data: Data, fl:float = None, fr:float = None) -> tuple[list
             # only take first / tallest one
             break
 
-    outlier_indices = outlier_filter(norm_val, z = 3, iqr_factor = 1.5, percentile_limit = 0)
-    norm_t = remove_by_indices(norm_t, outlier_indices)
-    norm_val = remove_by_indices(norm_val, outlier_indices)
-
+    norm_t, norm_val = remove_outliers([norm_t, norm_val],
+                                       no_outlier = 0,  # t is independent variable
+                                       z = 3,
+                                       iqr_factor = 1.5,
+                                       percentile_limit = 0)
     return norm_t, norm_val
 
 
@@ -123,9 +124,9 @@ def w2_norm_height_plot(paths: str|list, fig: str = None, fl = None, fr = None):
 # endpoints: endpoints for the bin intervals. 
 #   [endpoints[0], endpoints[1]) is the interval for the first bin.
 #   the list must be sorted.
-# return -> (height, bins)
+# return -> bins: list(list)
 #   for example bin[0] stores lift of all frames whose peak is between endpoints[0] and endpoints[1]
-def bin_by_w(data: Data, endpoints: list) -> tuple[float, list]:
+def bin_by_w(data: Data, endpoints: list) -> list:
     # element-wise comparison
     if (sorted(endpoints) != endpoints).all():
         print('(E) :bin_by_w: the endpoints provided are not sorted. Bins ill-defined.')
@@ -134,7 +135,6 @@ def bin_by_w(data: Data, endpoints: list) -> tuple[float, list]:
     fr = endpoints[-1]
     # the naive [] * n will fail, as it creates copies of the same list
     bins = [list() for i in range(len(endpoints) - 1)] 
-    height = data.height
     
     for frame in data.frames:
         for freq in frame.peak_freq:
@@ -147,8 +147,7 @@ def bin_by_w(data: Data, endpoints: list) -> tuple[float, list]:
                     break
             break
 
-    # if don't include height, we simply lose this piece of info as they aren't part of frames but Data
-    return height, bins
+    return bins
 
 
 # bin the lift values by w and for each bin, plot a scatter plot of lift versus distance.
@@ -156,21 +155,27 @@ def bin_by_w(data: Data, endpoints: list) -> tuple[float, list]:
 def bin_by_w_plot(paths: str|list, endpoints: list, fig: str = None):
     plt.clf()
 
-    bins_list = list()
-    height_list = list()
+    # height -> bins 
+    bins_by_height = dict()
 
     for name in get_data_files(paths):
         print(f':bin_by_w_plot: Processing {name}')
         data = Data() 
         data.load(name)
+        height = data.height
 
-        if data.height is None:
-            print(':bin_by_w_plot: height in file {filename} is undefined. Skipping.')
+        if height is None:
+            print(f':bin_by_w_plot: height in file {name} is undefined. Skipping.')
             continue
 
-        height, bins = bin_by_w(data, endpoints)
-        bins_list.append(bins)
-        height_list.append(height)
+        bins = bin_by_w(data, endpoints)
+        if height not in bins_by_height:
+            bins_by_height[height] = bins
+        else:
+            orig_bins = bins_by_height[height]
+            # combine the bins directly, since colouring by bin stops us
+            # from differentiating data sets anyway.
+            bins_by_height[height] = [orig_bins[i] + bins[i] for i in range(len(bins))]
 
     # O(n^3). So wow...
     # for each particular bin...
@@ -179,18 +184,20 @@ def bin_by_w_plot(paths: str|list, endpoints: list, fig: str = None):
         d = list() 
         lift = list()
         # for each particular height...
-        for j in range(0, len(height_list)):
-            bins = bins_list[j][i]
-            # there will be empty bins
-            if len(bins) >= 2:
-                outlier_indices = outlier_filter(bins, z = 3, iqr_factor = 1.5, percentile_limit = 0)
-                bins = remove_by_indices(bins, outlier_indices)
+        for height, bins in bins_by_height.items():
+            # n-th bin in bins at this height.
+            # can't use 'bin', since that is a python keyword.
+            bn = bins[i]
+            bn = remove_outliers(bn,
+                                 z = 3,
+                                 iqr_factor = 1.5,
+                                 percentile_limit = 0)
 
-            height = height_list[j]
             # take the frames in the correct bin,
-            for mass in bins:
+            for mass in bn:
                 d.append(height)
                 lift.append(mass)
+
         plt.plot(d,
                  lift,
                  ls = '',           # ls: no linestyle.
@@ -264,11 +271,13 @@ def get_results_by_batch(paths: str|list, heights: Number|list = None, rpm_range
             rpm = [frame.get_mean_rpm() for frame in frames]
             total_mass = [frame.get_total_mass() for frame in frames]
 
-            outlier_indices_rpm = set(outlier_filter(rpm, z = 3, iqr_factor = 1.5, percentile_limit = 0))
-            outlier_indices_mass = set(outlier_filter(total_mass, z = 3, iqr_factor = 1.5, percentile_limit = 0))
-            outlier_indices = list(outlier_indices_rpm | outlier_indices_mass)
-
-            result_by_rpm[target_rpm] = remove_by_indices(frames, outlier_indices)
+            # filter frames with data in rpm and total_mass
+            # [0] at the end extracts filtered frames from the the three-elemnt list.
+            result_by_rpm[target_rpm] = remove_outliers([frames, rpm, total_mass],
+                                                        no_outlier = 0,
+                                                        z = 3,
+                                                        iqr_factor = 1.5,
+                                                        percentile_limit = 0)[0]
 
         result_by_batch[batch] = dict(sorted(result_by_rpm.items(),
                                              key = lambda pair:st.mean(pair[0])))
@@ -429,22 +438,19 @@ def mass_calibration_curve(paths: str|list, preview_data: bool = False, fig1: st
 
         # find mean total mass with outlier filtered.
         total_mass = data.get_total_mass()
-        mass_outlier_ind = outlier_filter(total_mass, z = 3, iqr_factor = 2)
-        total_mass = remove_by_indices(total_mass, mass_outlier_ind) 
-        measured_list.append(st.mean(total_mass))
-
-        # TODO: generalise this outlier filtering procedure. (multiple lists as arguments)
         accel = data.get_accel_vec()
-        accel_outlier_ind = set()
-        for i in range(3):
-            comp = [a[i] for a in accel]
-            # take union, so we don't disturb the data half-way when still
-            # identifying the outliers.
-            comp_outlier_ind = set(outlier_filter(comp, z = 3, iqr_factor = 2))
-            accel_outlier_ind = accel_outlier_ind | comp_outlier_ind
+        accel_by_comp = list(map(list, zip(*accel))) # transpose
+        
+        # pack to be filtered together
+        filtered = remove_outliers([*accel_by_comp, total_mass],
+                                   z = 3,
+                                   iqr_factor = 1.5)
 
-        accel = remove_by_indices(accel, accel_outlier_ind)
+        accel_by_comp = filtered[:3]
+        accel = list(map(list, zip(*accel_by_comp)))
+        total_mass = filtered[3]
 
+        measured_list.append(st.mean(total_mass))
         cos_list = [a[2] / sqrt(a[0]**2 + a[1]**2 + a[2]**2) for a in accel]
         corrected_list.append(st.mean(total_mass) / st.mean(cos_list))
 
@@ -455,7 +461,7 @@ def mass_calibration_curve(paths: str|list, preview_data: bool = False, fig1: st
 
     diff = [corrected_list[i] - yy[i] for i in range(len(yy))]
 
-    plt.plot(std_list, corrected_list, ls = '', marker = '+')
+    plt.plot(std_list, corrected_list, ls = '', marker = 'x')
     plt.plot(std_list, yy)
     if fig1 is not None:
         plt.savefig(fig1)
@@ -475,11 +481,15 @@ GENERIC processing functions
 # filter a list with z-values, IQR and percentile limit.
 # if none of these are specified, no values are filtered.
 # return -> indices: list. indices of outlier items.
-def outlier_filter(x: list, z: float = None, iqr_factor: float = None, percentile_limit: float = 0) -> list:
+def get_outlier_indices(x: list, z: float = None, iqr_factor: float = None, percentile_limit: float = 0) -> list:
     if (percentile_limit >= 100
         or (z and z < 0)
         or (iqr_factor and iqr_factor < 0)):
-        raise ValueError(':outlier_filter: Invalid statistical parameters supplied.')
+        raise ValueError(':get_outlier_indices: Invalid statistical parameters supplied.')
+
+    # can't do statistics
+    if len(x) < 2:
+        return []
 
     indices = list()
     mean = st.mean(x)
@@ -506,6 +516,43 @@ def outlier_filter(x: list, z: float = None, iqr_factor: float = None, percentil
 # return -> filtered list of x
 def remove_by_indices(x: list, indices: list) -> list:
     return [x[i] for i in range(len(x)) if i not in indices]
+
+
+# axes: list, or potentially list of lists, corresponding to many axes of the same data set.
+# no_outlier: a list of indices where we don't attempt to find outliers.
+#             Needed for independent variables.
+# **kwargs: filtering options, see arguments of get_outlier_indices
+# return -> list: modified axes (original 1d/2d form preserved)
+def remove_outliers(axes: list, no_outlier: int|list = [], **kwargs) -> list:
+    # create shallow copy to avoid altering original
+    axes = [el for el in axes]
+
+    # treat single list case first
+    if (len(axes) == 0 or isinstance(axes[0], Number)):
+        outlier_indices = get_outlier_indices(axes, **kwargs)
+        return remove_by_indices(axes, outlier_indices)
+    
+    # sanity check: must be at least uniform 2D list.
+    l = len(axes[0])
+    for axis in axes:
+        if l != len(axis):
+            raise IndexError('(E) remove_outliers: Lists of different lengths supplied.')
+
+    if type(no_outlier) is int:
+        no_outlier = [no_outlier]
+
+    outlier_indices = set()
+    # find all the outlier indices first
+    for i in range(len(axes)):
+        if i in no_outlier:
+            continue
+        outlier_indices = outlier_indices | set(get_outlier_indices(axes[i], **kwargs))
+
+    # remove corresponding elements in each axis.
+    for i in range(len(axes)):
+        axes[i] = remove_by_indices(axes[i], outlier_indices)
+
+    return axes
 
 
 # return if {val} is in [l, r).
