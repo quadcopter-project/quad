@@ -81,7 +81,8 @@ class BFLive:
                           timestamp = self.timestamp,
                           platform = self.PLATFORM)
 
-        input('Confirm continue: ')
+        #input('Confirm continue: ')
+        time.sleep(transient)
 
         print(f'BFLive::record: taring all load cells.')
         self.ardman.tare(block = True)
@@ -120,10 +121,10 @@ class BFLive:
         self.quad.set_arming(False)
 
 if __name__ == '__main__':
-    rpm_queue = [2000, 4000] + np.linspace(6000, 12000, 13).tolist()
-    rec_t = 60
-    transient = 10
-    rec_path = '../raw/bf2/'
+    rpm_queue = [2000, 4000] + np.linspace(6000, 12000, 7).tolist()
+    rec_t = 30
+    transient = 5
+    rec_path = '../raw/bf2/test_run_1_30s_5s'
     live = BFLive(path = rec_path)
     while True:
         print('betaflight-2 testing')

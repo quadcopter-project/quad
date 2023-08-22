@@ -15,7 +15,7 @@ import os, scipy
 import matplotlib.pyplot as plt
 import numpy as np
 import statistics as st
-
+from matplotlib import cm
 from utils import Data
 from math import sqrt
 from numbers import Number
@@ -467,6 +467,10 @@ def rpm_height_3d_plot(data_list: list, avg:bool = True, fig: str = None, **kwar
             mass_z.append(z[i])
 
     ax.scatter(height_x, rpm_y, mass_z, marker = '^', s=5)
+    #height_x_arr = np.array(height_x)
+    #rpm_y_arr = np.array(rpm_y)
+    #mass_z_arr = np.array(mass_z)
+    #ax.plot_trisurf(height_x_arr,rpm_y_arr,mass_z_arr,linewidth=0.2, antialiased=True)
     ax.set_xlabel('Height / cm')
     ax.set_ylabel('RPM / min^-1')
     ax.set_zlabel('Mass / g')

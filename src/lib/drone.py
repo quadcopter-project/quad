@@ -220,7 +220,6 @@ class Drone:
     # hold_throttle = True: When code exits from block, it brings down rpm_worker to keep throttle constant.
     # * only takes effect if code is blocking.
     def set_rpm(self, target:Number|list, block:bool = True, hold_throttle = False):
-        RPM_TOLERANCE:float = 150
         if isinstance(target, Number):
             target = [target] * self.NUM_OF_MOTORS
 
@@ -230,11 +229,12 @@ class Drone:
         # if rpm_control_on is False, then block will certainly never exit, so ignore
         if self.rpm_control_on and block:
             rpm = self.get_rpm()
-            abs_diff = [abs(target[i] - rpm[i]) for i in range(self.NUM_OF_MOTORS)]
-            while any(diff > RPM_TOLERANCE for diff in abs_diff):
+            diff = [target[i] - rpm[i] for i in range(self.NUM_OF_MOTORS)]
+            RPM_TOLERANCE = [target[i]*0.05 for i in range(self.NUM_OF_MOTORS)]
+            while any(diff[i] > RPM_TOLERANCE[i] for i in range(self.NUM_OF_MOTORS)) or any(diff[i] < -RPM_TOLERANCE[i] for i in range(self.NUM_OF_MOTORS)):
                 time.sleep(0.5)
                 rpm = self.get_rpm()
-                abs_diff = [abs(target[i] - rpm[i]) for i in range(self.NUM_OF_MOTORS)]
+                diff = [target[i] - rpm[i] for i in range(self.NUM_OF_MOTORS)]
 
             if hold_throttle:
                 self.set_rpm_worker_on(False)

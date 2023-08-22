@@ -115,7 +115,6 @@ class Data:
             peak_freq, peak_ampl = Numerical.sort_peaks(peak_freq, peak_ampl)
 
         # remove unknown properties in kwargs
-        # useful for e.g. an unpacked ArdReading.
         dummy_frame = Frame()   # hasattr doesn't work on a class.
         for kw in list(kwargs.keys()):  # or else, RuntimeError results.
             if not hasattr(dummy_frame, kw):
