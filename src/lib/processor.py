@@ -346,8 +346,8 @@ def lift_rpm2_plot(data_list: list, avg: bool = True, fig: str = None, **kwargs)
     # for every series, do:
     for (height, timestamp), result_by_rpm in result_by_batch.items():
         x, y, xerr, yerr = lift_rpm(result_by_rpm, avg)
+        xerr = [2 * xx * xe for xx, xe in zip(x, xerr)]
         x = [xx ** 2 for xx in x]
-        xerr = [xe * 2 for xe in xerr]
         errorbar_plot(x, y, xerr, yerr,
                       linreg = True,
                       label = f'h = {height} cm')
@@ -355,7 +355,7 @@ def lift_rpm2_plot(data_list: list, avg: bool = True, fig: str = None, **kwargs)
     plt.xlabel('rpm^2 / min^-2')
     plt.ylabel('lift / g')
     plt.legend(ncol = 4, loc = 'upper left', fontsize = 5)
-    plt.title('Lift against rpm plot')
+    plt.title('Lift against rpm^2 plot')
 
     if fig:
         plt.savefig(fig)
@@ -363,6 +363,7 @@ def lift_rpm2_plot(data_list: list, avg: bool = True, fig: str = None, **kwargs)
     plt.clf()
 
 
+# plot CL, calculated purely from results at each w, against w, for all heights by default.
 def cl_w_plot(data_list: list, avg: bool = True, fig: str = None, **kwargs):
     from math import sqrt
 
@@ -398,10 +399,7 @@ def cl_w_plot(data_list: list, avg: bool = True, fig: str = None, **kwargs):
 
 # plot a graph of CL (coefficient of lift) against height.
 # avg = True: take time-average of mean_rpm and total_mass.
-# log_graph = True: plot ln(CL) against height.
-def cl_height_plot(data_list: list, avg: bool = True, log_graph: bool = False, fig: str = None, **kwargs):
-    from math import log
-
+def cl_height_plot(data_list: list, avg: bool = True, fig: str = None, **kwargs):
     plt.ioff()
     plt.clf()
 
@@ -416,29 +414,57 @@ def cl_height_plot(data_list: list, avg: bool = True, log_graph: bool = False, f
 
         res = scipy.stats.linregress(x, y)
         x_cl.append(height)
-        if log_graph:
-            y_cl.append(log(res.slope))
-            yerr_cl.append(res.stderr / res.slope)
-        else:
-            y_cl.append(res.slope)
-            yerr_cl.append(res.stderr)
+        y_cl.append(res.slope)
+        yerr_cl.append(res.stderr)
      
     for i in range(len(x_cl)):
         errorbar_plot(x_cl[i], y_cl[i], yerr = yerr_cl[i])
 
-    if log_graph:
-        plt.title('ln(CL) against height')
-        plt.ylabel('ln(CL) / ln(g s^2)')
-        res = scipy.stats.linregress(x_cl, y_cl)
-        print(f'log fit: {res}')
-        y_fit = [x * res.slope + res.intercept for x in x_cl]
-        plt.plot(x_cl, y_fit)
-
-    else:
-        plt.title('CL against height')
-        plt.ylabel('CL / (g s^2)')
-
+    plt.title('CL against height')
     plt.xlabel('height / cm')
+    plt.ylabel('CL / (g s^2)')
+    if fig:
+        plt.savefig(fig)
+    plt.show()
+    plt.clf()
+
+
+# offset: amount to ADD TO each CL by, before taking ln/ln.
+def ln_cl_ln_height_plot(data_list: list, avg: bool = True, fig: str = None, offset: float = 0, **kwargs):
+    from math import log
+
+    plt.ioff()
+    plt.clf()
+
+    result_by_batch = get_result_by_batch(data_list, **kwargs)
+
+    # cl: coefficient of lift
+    x_cl, y_cl, yerr_cl = ([] for i in range(3))
+
+    for (height, timestamp), result_by_rpm in result_by_batch.items():
+        if height < 0:
+            raise ValueError('Negative height found in input: Check if you have corrected for reference height?')
+
+        x, y, xerr, yerr = lift_rpm(result_by_rpm, avg)
+        x = [xx ** 2 for xx in x]
+
+        res = scipy.stats.linregress(x, y)
+        cl = res.slope
+
+        x_cl.append(log(height))
+        y_cl.append(log(cl + offset))
+        yerr_cl.append(res.stderr / cl)
+     
+    for i in range(len(x_cl)):
+        errorbar_plot(x_cl[i], y_cl[i]) # can't use linreg as we are plotting individual points.
+
+    plt.title('ln(CL) against ln(height)')
+    plt.xlabel('ln(height) / ln(cm)')
+    plt.ylabel('ln(CL) / ln(g s^2)')
+    res = scipy.stats.linregress(x_cl, y_cl)
+    print(f'log fit: {res}')
+    y_fit = [xx * res.slope + res.intercept for xx in x_cl]
+    plt.plot(x_cl, y_fit)
     if fig:
         plt.savefig(fig)
     plt.show()
