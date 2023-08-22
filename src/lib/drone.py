@@ -194,15 +194,15 @@ class Drone:
         throttle = max(throttle, self.MIN_THROTTLE)
         throttle = min(throttle, self.MAX_THROTTLE)
 
-        self.throttle[ind] = throttle
+        self.throttle[ind] = int(throttle)
         throttle_string = " ".join([str(val) for val in self.throttle])
         self.send(f'SET {throttle_string}')
 
     # throttle: int will set all motors to the same throttle
     def set_throttle(self, throttle:int|list):
         # int, then assume same throttle for all
-        if type(throttle) is int:
-            throttle = [throttle] * self.NUM_OF_MOTORS
+        if isinstance(throttle, Number):
+            throttle = [int(throttle)] * self.NUM_OF_MOTORS
 
         for i in range(len(throttle)):
             self.set_throttle_for_motor(i, throttle[i])
@@ -229,12 +229,13 @@ class Drone:
         # if rpm_control_on is False, then block will certainly never exit, so ignore
         if self.rpm_control_on and block:
             rpm = self.get_rpm()
-            diff = [target[i] - rpm[i] for i in range(self.NUM_OF_MOTORS)]
-            RPM_TOLERANCE = [target[i]*0.05 for i in range(self.NUM_OF_MOTORS)]
-            while any(diff[i] > RPM_TOLERANCE[i] for i in range(self.NUM_OF_MOTORS)) or any(diff[i] < -RPM_TOLERANCE[i] for i in range(self.NUM_OF_MOTORS)):
+            rpm_diff = [target[i] - rpm[i] for i in range(self.NUM_OF_MOTORS)]
+            rpm_tolerance = [target[i] * 0.05 for i in range(self.NUM_OF_MOTORS)]
+
+            while any(abs(diff) > tolerance for diff, tolerance in zip(rpm_diff, rpm_tolerance)):
                 time.sleep(0.5)
                 rpm = self.get_rpm()
-                diff = [target[i] - rpm[i] for i in range(self.NUM_OF_MOTORS)]
+                rpm_diff = [target[i] - rpm[i] for i in range(self.NUM_OF_MOTORS)]
 
             if hold_throttle:
                 self.set_rpm_worker_on(False)
@@ -245,14 +246,11 @@ class Drone:
         if (not on):
             # signal the worker to quit
             self.rpm_control_on = False
-            # reset rpm. A design choice: If rpm worker is off, 
-            # then the rpm should become unmaintained and keep spinning.
-            # However when one switch it on again next time, it should
-            # have a reproducible behaviour (same as fresh start.)
-            self.set_rpm(0)
             if (self.rpm_thread):
-                # and wait for it to actually quit
-                self.rpm_thread.join()
+                self.rpm_thread.join()  # wait for rpm worker to exit
+            # reset target after rpm_worker exits. Motor will keep spinning
+            # only after rpm worker is truly off, or else it might be in the middle of adjusting throttle.
+            self.set_rpm(0)
 
         elif on:
             # start thread only if it wasn't already present
@@ -276,10 +274,8 @@ class Drone:
                 target_rpm = self.target[i]
                 target_throttle = self.MIN_THROTTLE
 
-                # TODO: FOR NOW, ALLOW FOR AN ERROR OF +- 75.
                 if not target_rpm: # motor simply not on
                     target_throttle = self.MIN_THROTTLE
-                # Quick adjustments
                 else:
                     target_throttle = throttle + (target_rpm - rpm) // 100
                 # the target should not go below MIN_THROTTLE, or above MAX_THROTTLE.
