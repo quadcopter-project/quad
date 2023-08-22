@@ -145,26 +145,31 @@ class Drone:
                 else:
                     print('Drone::launch_betaflight: No betaflight-configurator provided, and sys.platform not recognised. Skipping launch.')
                     return
+                
+                if not os.path.isfile(path):
+                    print('Drone::launch_betaflight: betaflight-configurator not found in folder; Skipping launch. Have you compiled it?')
+                    return
+
             else:
                 print('Drone::launch_betaflight: No betaflight-configurator provided, and auto-detect failed. Skipping launch.')
                 return
 
         self.path = path
-        
-        kwargs = dict()
-        if quiet:
-            kwargs.update(stdout = subprocess.DEVNULL,
-                          stderr = subprocess.STDOUT)
 
         if 'linux' in sys.platform:
-            kwargs.update(start_new_session=True)
+            kwargs = dict()
+            if quiet:
+                kwargs.update(stdout = subprocess.DEVNULL,
+                              stderr = subprocess.STDOUT)
+
+            subprocess.Popen([path],
+                             start_new_session = True,
+                             **kwargs)
 
         elif 'win' in sys.platform:
-            CREATE_NEW_PROCESS_GROUP = 0x00000200
-            DETACHED_PROCESS = 0x00000008
-            kwargs.update(creationflags=DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP)
+            # workaround - otherwise betaflight gets killed as python exits.
+            os.system('start "betaflight-launcher" /min ' + path)
 
-        subprocess.Popen([path], **kwargs)
 
     def close(self):
         self.set_rpm_worker_on(False)
