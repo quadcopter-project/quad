@@ -134,6 +134,9 @@ class Data:
 
     # GET functions (public)
     # important for `generic` functions in the new Plotter.
+    def get_date(self) -> str:
+        return datetime.fromtimestamp(self.timestamp).strftime('%d/%m/%Y %H:%M:%S')
+
     def get_t(self) -> list:
         return [frame.t for frame in self.frames]
 
