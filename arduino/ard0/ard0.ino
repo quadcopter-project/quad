@@ -1,5 +1,6 @@
 const int DEV_ID = 0;
 bool isOperating = false;
+
 // MOTOR
 #include <AccelStepper.h>
 const int NUM_MOTOR = 3;
@@ -34,8 +35,8 @@ const int ECHO_PIN = 9;
 #include "Adafruit_MMA8451.h"
 #include <Adafruit_Sensor.h>
 Adafruit_MMA8451 mma = Adafruit_MMA8451();
-const int ACCEL_MEAN_REPEATS = 3;
-const int ACCEL_DELAY = 1500;    // so that system can settle down.
+const int ACCEL_MEAN_REPEATS = 20;  // average out oscillations.
+const int ACCEL_DELAY = 3000;    // so that system can settle down.
 
 // Utitilies for reading and parsing Serial input
 const int MAX_STR_LEN = 50;
