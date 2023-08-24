@@ -315,6 +315,7 @@ def lift_rpm(result_by_rpm: dict, avg: bool = True):
 # **kwargs will be passed into plt.errorbar().
 # useful for e.g. labelling the lines.
 def errorbar_plot(x: list, y: list, xerr: list = None, yerr: list = None, linreg: bool = False, **kwargs):
+    plt.subplot(2, 1, 1)
     lines = plt.errorbar(x, y,
                          xerr = xerr,
                          yerr = yerr,
@@ -423,6 +424,7 @@ def cl_height_plot(data_list: list, avg: bool = True, fig: str = None, **kwargs)
     plt.title('CL against height')
     plt.xlabel('height / cm')
     plt.ylabel('CL / (g s^2)')
+    plt.legend(ncol=4, loc='upper left', fontsize=5)
     if fig:
         plt.savefig(fig)
     plt.show()
@@ -432,6 +434,7 @@ def cl_height_plot(data_list: list, avg: bool = True, fig: str = None, **kwargs)
 # offset: amount to ADD TO each CL by, before taking ln/ln.
 def ln_cl_ln_height_plot(data_list: list, avg: bool = True, fig: str = None, offset: float = 0, **kwargs):
     from math import log
+    from scipy import optimize
 
     plt.ioff()
     plt.clf()
@@ -461,10 +464,30 @@ def ln_cl_ln_height_plot(data_list: list, avg: bool = True, fig: str = None, off
     plt.title('ln(CL) against ln(height)')
     plt.xlabel('ln(height) / ln(cm)')
     plt.ylabel('ln(CL) / ln(g s^2)')
-    res = scipy.stats.linregress(x_cl, y_cl)
-    print(f'log fit: {res}')
-    y_fit = [xx * res.slope + res.intercept for xx in x_cl]
-    plt.plot(x_cl, y_fit)
+    #res = scipy.stats.linregress(x_cl, y_cl)
+    #print(f'log fit: {res}')
+    #y_fit = [xx * res.slope + res.intercept for xx in x_cl]
+
+    def piecewise_linear_2(x, x0, y0, k1, k2):
+        return np.piecewise(x, [x < x0, x >= x0], [lambda x: k1 * x + y0 - k1 * x0, lambda x: k2 * x + y0 - k2 * x0])
+    def piecewise_linear_3(x,x0,y0,x1,y1,k1,k2):
+        return np.piecewise(x, [x < x0, (x >= x0) & (x < x1), x>= x1], [lambda x: k1 * x + y0 - k1 * x0, lambda x: (x-x0)/(x1-x0)*(y1-y0) + y0 ,  lambda x: k2 * x + y1 - k2 * x1])
+
+    fit3, e3 = optimize.curve_fit(piecewise_linear_3, x_cl, y_cl,p0=np.asarray([3.75,-13,3.8,-13.5,-0.5,0]))
+    fit2, e2 = optimize.curve_fit(piecewise_linear_2, x_cl, y_cl, p0=np.asarray([3.75, -13, -0.5, 0]))
+    x_ref = np.linspace(min(x_cl),max(x_cl),1000)
+    plt.plot(x_ref, piecewise_linear_3(x_ref, *fit3))
+    plt.plot(x_ref, piecewise_linear_2(x_ref, *fit2))
+    residual3 = y_cl - piecewise_linear_3(x_cl, *fit3)
+    residual2 = y_cl-piecewise_linear_2(x_cl,*fit2)
+    plt.subplot(2,1,2)
+    plt.plot(x_cl,np.zeros(len(x_cl)))
+    plt.plot(x_cl,residual2)
+    plt.plot(x_cl,residual3)
+    plt.xlabel('ln(height) / ln(cm)')
+    plt.ylabel('residual')
+
+    print(fit2)
     if fig:
         plt.savefig(fig)
     plt.show()
