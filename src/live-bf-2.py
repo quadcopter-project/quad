@@ -124,7 +124,7 @@ if __name__ == '__main__':
     rpm_queue = [2000, 4000] + np.linspace(6000, 12000, 7).tolist()
     rec_t = 30
     transient = 5
-    rec_path = '../raw/bf2/test_run_1_30s_5s'
+    rec_path = '../raw/bf2/240mm_prop_spacing_4inch_prop'
     live = BFLive(path = rec_path)
     while True:
         print('betaflight-2 testing')

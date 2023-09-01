@@ -332,6 +332,8 @@ def errorbar_plot(x: list, y: list, xerr: list = None, yerr: list = None, linreg
         y_fit = [res.slope * xx + res.intercept for xx in x]
         
         plt.plot(x, y_fit, color = linecolor, linewidth = 1)
+        return y_fit
+
 
 
 # calls get_result_by_batch to process data.
@@ -349,14 +351,23 @@ def lift_rpm2_plot(data_list: list, avg: bool = True, fig: str = None, **kwargs)
         x, y, xerr, yerr = lift_rpm(result_by_rpm, avg)
         xerr = [2 * xx * xe for xx, xe in zip(x, xerr)]
         x = [xx ** 2 for xx in x]
-        errorbar_plot(x, y, xerr, yerr,
+        y_fit = errorbar_plot(x, y, xerr, yerr,
                       linreg = True,
                       label = f'h = {height} cm')
-       
+        res = [a-b for a,b in zip(y,y_fit)]
+        plt.subplot(2, 1, 2)
+        plt.plot(x, res, linewidth=1)
+
+    plt.subplot(2,1,1)
     plt.xlabel('rpm^2 / min^-2')
     plt.ylabel('lift / g')
     plt.legend(ncol = 4, loc = 'upper left', fontsize = 5)
     plt.title('Lift against rpm^2 plot')
+
+    plt.subplot(2,1,2)
+    plt.xlabel('rpm^2 / min^-2')
+    plt.ylabel('residual / g')
+    plt.title('residual_of_linear_estimate')
 
     if fig:
         plt.savefig(fig)
@@ -424,7 +435,72 @@ def cl_height_plot(data_list: list, avg: bool = True, fig: str = None, **kwargs)
     plt.title('CL against height')
     plt.xlabel('height / cm')
     plt.ylabel('CL / (g s^2)')
-    plt.legend(ncol=4, loc='upper left', fontsize=5)
+
+    # fit using the assumption that ground effect behaves as the eqn
+    # values of height (x) are made non dimensional by dividing by prop_spacing
+    prop_spacing = 16
+
+    def ground_effect(x,c1,c2,c3):
+        c0 =0
+        c4 =3
+        return np.piecewise(x,[x < c0, x >= c0], [lambda x: c1/(np.power((c0+c4)/prop_spacing,c3))+c2, lambda x: c1/(np.power((x+c4)/prop_spacing,c3))+c2])
+
+    # initial parameters for ground effect
+
+    p0_ground = np.asarray([4e-6, 2.3e-6, 1])
+    def pipe_effect(x, c5, c6,c7):
+        return np.piecewise(x, [x < 0, x >= 0], [lambda x: 0, lambda x: -c5 * (x/prop_spacing) / (np.power(c7, x/prop_spacing*c6))])
+
+
+    def overall_effect(x,c1,c2,c3,c5,c6,c7):
+        return(ground_effect(x,c1,c2,c3)+pipe_effect(x, c5, c6,c7))
+
+    fit , cov = scipy.optimize.curve_fit(overall_effect,x_cl,y_cl,p0 = np.asarray([1e-6, 2.3e-6, 1,1,1,1]),maxfev = 10000,bounds =([-5,-5,-5,-5,0,-5],[5,5,5,5,5,5]))
+
+    plt.subplot(2,1,1)
+    x_ref = np.linspace(min(x_cl), max(x_cl), 1000)
+    plt.plot(x_ref,overall_effect(x_ref,*fit))
+    overall_residual = [a-b for a,b in zip(y_cl, [overall_effect(a,*fit) for a in x_cl])]
+    plt.plot(x_ref,ground_effect(x_ref,*fit[0:3]))
+    # moved up by 2.2e-6 for better reference
+    plt.plot(x_ref,pipe_effect(x_ref,*fit[3:6])+2.2e-6)
+    plt.subplot(2,1,2)
+    plt.plot(x_cl,overall_residual)
+    plt.plot(x_ref,np.zeros(len(x_ref)))
+    print(fit)
+
+    # try a range of C4, calculate the residuals of optimal fits with a given C4
+    # a reasonable c4 value is 3
+    '''
+    
+    c4_fit = []
+    c4_res = []
+    c4_list = []
+    for i in range(0,500):
+        c4 = i/50
+        fit_temp, cov_temp = scipy.optimize.curve_fit(ground_effect,x_cl,y_cl,p0 = np.asarray([4e-6, 2.3e-6, 1]),maxfev = 10000)
+        c4_fit.append(fit_temp)
+        c4_res.append(sum([a-b for a,b in zip(y_cl, [ground_effect(a,*fit_temp) for a in x_cl])]))
+        c4_list.append(c4)
+    plt.subplot(2,1,2)
+    plt.plot(c4_list,c4_res)
+    '''
+    # code used to fit ground effect first and then pipe effect
+    '''
+    fit_ground, e_ground = scipy.optimize.curve_fit(ground_effect,x_cl,y_cl,p0 = np.asarray([4e-6, 2.3e-6, 1]),maxfev = 10000)
+    x_ref = np.linspace(min(x_cl), max(x_cl), 1000)
+
+    #plot both the initial value curve and the optimised curve
+    plt.plot(x_ref, ground_effect(x_ref, *p0_ground))
+    plt.plot(x_ref, ground_effect(x_ref, *fit_ground))
+    print(fit_ground)
+
+    residual_ground = [a-b for a,b in zip(y_cl, [ground_effect(a,*fit_ground) for a in x_cl])]
+    # fit residual using pipe effect assuming equation below
+
+    fit_pipe, e_pipe = scipy.optimize.curve_fit(pipe_effect,x_cl,residual_ground,maxfev = 10000)
+    '''
+
     if fig:
         plt.savefig(fig)
     plt.show()
@@ -464,47 +540,60 @@ def ln_cl_ln_height_plot(data_list: list, avg: bool = True, fig: str = None, off
     plt.title('ln(CL) against ln(height)')
     plt.xlabel('ln(height) / ln(cm)')
     plt.ylabel('ln(CL) / ln(g s^2)')
-    #res = scipy.stats.linregress(x_cl, y_cl)
-    #print(f'log fit: {res}')
-    #y_fit = [xx * res.slope + res.intercept for xx in x_cl]
 
+    #fit ln=ln data using 2 and 3 segments piecewise linear equations
     def piecewise_linear_2(x, x0, y0, k1, k2):
         return np.piecewise(x, [x < x0, x >= x0], [lambda x: k1 * x + y0 - k1 * x0, lambda x: k2 * x + y0 - k2 * x0])
     def piecewise_linear_3(x,x0,y0,x1,y1,k1,k2):
         return np.piecewise(x, [x < x0, (x >= x0) & (x < x1), x>= x1], [lambda x: k1 * x + y0 - k1 * x0, lambda x: (x-x0)/(x1-x0)*(y1-y0) + y0 ,  lambda x: k2 * x + y1 - k2 * x1])
 
-    fit3, e3 = optimize.curve_fit(piecewise_linear_3, x_cl, y_cl,p0=np.asarray([3.75,-13,3.8,-13.5,-0.5,0]))
+    fit3, e3 = optimize.curve_fit(piecewise_linear_3, x_cl, y_cl,p0=np.asarray([3,-13,4,-13,-0.5,0]))
     fit2, e2 = optimize.curve_fit(piecewise_linear_2, x_cl, y_cl, p0=np.asarray([3.75, -13, -0.5, 0]))
     x_ref = np.linspace(min(x_cl),max(x_cl),1000)
     plt.plot(x_ref, piecewise_linear_3(x_ref, *fit3))
     plt.plot(x_ref, piecewise_linear_2(x_ref, *fit2))
+    # calculate residuals
     residual3 = y_cl - piecewise_linear_3(x_cl, *fit3)
     residual2 = y_cl-piecewise_linear_2(x_cl,*fit2)
+
     plt.subplot(2,1,2)
     plt.plot(x_cl,np.zeros(len(x_cl)))
     plt.plot(x_cl,residual2)
     plt.plot(x_cl,residual3)
     plt.xlabel('ln(height) / ln(cm)')
     plt.ylabel('residual')
+    # mean square error
+    MSE2 = np.square(residual2).mean()
+    MSE3 = np.square(residual3).mean()
 
-    print(fit2)
+    print(f'MSE for 2 segment:{MSE2}')
+    print(f'MSE for 3 segment:{MSE3}')
+
     if fig:
         plt.savefig(fig)
     plt.show()
     plt.clf()
 
+# since most matplotlib 3d plot functions require 2d np array z inputs
+# interpolation of x and y are used to form meshgrid
+def interpolate_to_create_2d_z(x,y,z):
+    from scipy.interpolate import griddata
+    xi = np.linspace(min(x), max(x), len(x)*5)
+    yi = np.linspace(min(y), max(y), len(y)*5)
+    Xi, Yi = np.meshgrid(xi, yi)
+    # Interpolate z values onto the regular grid
+    Zi = griddata((x, y), z, (Xi, Yi), method='linear')
+    return Xi,Yi,Zi
 
-# plot lift(z) against RPM(y) and height(x) in 3D.
+# plot lift(z) against RPM2(y) and height(x) in 3D.
 def rpm_height_3d_plot(data_list: list, avg:bool = True, fig: str = None, **kwargs):
     plt.ioff()
     plt.clf()
-    
-    figure = plt.figure()
-    ax = figure.add_subplot(projection = '3d')
+    ax = plt.figure().add_subplot(projection='3d')
     ax.view_init(elev = 2, azim = 3)
 
     height_x = []
-    rpm_y = []
+    rpm_y2 = []
     mass_z = []
         
     result_by_batch = get_result_by_batch(data_list, **kwargs)
@@ -512,16 +601,18 @@ def rpm_height_3d_plot(data_list: list, avg:bool = True, fig: str = None, **kwar
         y, z, yerr, zerr = lift_rpm(result_by_rpm, avg)
         for i in range(len(y)):
             height_x.append(height)
-            rpm_y.append(y[i])
+            rpm_y2.append(y[i]**2)
             mass_z.append(z[i])
 
-    ax.scatter(height_x, rpm_y, mass_z, marker = '^', s=5)
-    #height_x_arr = np.array(height_x)
-    #rpm_y_arr = np.array(rpm_y)
-    #mass_z_arr = np.array(mass_z)
-    #ax.plot_trisurf(height_x_arr,rpm_y_arr,mass_z_arr,linewidth=0.2, antialiased=True)
+    Xi,Yi,Zi = interpolate_to_create_2d_z(height_x, rpm_y2, mass_z)
+
+    # wireframe plot
+    ax.plot_wireframe(Xi,Yi,Zi,rstride=200, cstride=200, linewidth=2)
+    # superpose the 3d surface on the wireframe
+    surf = ax.plot_surface(Xi, Yi, Zi, cmap=cm.coolwarm,linewidth=0, antialiased=True, alpha = 0.5)
+
     ax.set_xlabel('Height / cm')
-    ax.set_ylabel('RPM / min^-1')
+    ax.set_ylabel('RPM^2 / min^-2')
     ax.set_zlabel('Mass / g')
     
     if fig:
