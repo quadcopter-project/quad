@@ -87,9 +87,9 @@ class Drone:
             for c in set(self.connections):
                 reactor.callFromThread(self.sendMessage, c, payload)
 
-    def __init__(self, path:str = None, port: int = 3000):
+    def __init__(self, path:str = None, port: int = 3000, persist: bool = False):
         self.socket_init(port)
-        self.launch_betaflight(path)
+        self.launch_betaflight(path, persist)
 
         # wait for connection to be established
         while not self.conn:
@@ -125,7 +125,7 @@ class Drone:
         self.ServerProtocol.send(data)
 
     # quiet: redirect betaflight-configurator STDOUT to /dev/null. 
-    def launch_betaflight(self, path: str = None, quiet:bool = True):
+    def launch_betaflight(self, path: str = None, persist:bool = False, quiet:bool = True):
         # guess a path if not provided.
         if not path:
             # first need to locate the parent folder of bf-conf.
@@ -156,19 +156,23 @@ class Drone:
 
         self.path = path
 
-        if 'linux' in sys.platform:
-            kwargs = dict()
-            if quiet:
-                kwargs.update(stdout = subprocess.DEVNULL,
-                              stderr = subprocess.STDOUT)
+        kwargs = dict()
+        if quiet:
+            kwargs.update(stdout = subprocess.DEVNULL,
+                          stderr = subprocess.STDOUT)
 
-            subprocess.Popen([path],
-                             start_new_session = True,
-                             **kwargs)
+        if 'linux' in sys.platform:
+            if persist:
+                kwargs.update(start_new_session = True)
+
+            subprocess.Popen([path], **kwargs)
 
         elif 'win' in sys.platform:
-            # workaround - otherwise betaflight gets killed as python exits.
-            os.system('start "betaflight-launcher" /min ' + path)
+            if persist:
+                subprocess.Popen(['start "betaflight-launcher" /min', path], **kwargs)
+
+            else:
+                subprocess.Popen([path], **kwargs)
 
 
     def close(self):
