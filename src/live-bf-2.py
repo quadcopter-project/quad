@@ -33,7 +33,7 @@ class BFLive:
                 continue
             try:
                 cnt = int(filename.split('.')[-2].split('_')[-1])
-                self.cnt = max(self.cnt, cnt) 
+                self.cnt = max(self.cnt, cnt)
             except ValueError:
                 print(f'BFLive::__init__: ValueError: Could not parse cnt value in filename {filename}.')
         self.cnt = self.cnt + 1
@@ -47,7 +47,7 @@ class BFLive:
     # move by steps, then level if needed.
     def move_level(self, steps: int):
         self.ardman.move(steps, block = True)
-        self.ardman[0].level()
+        #self.ardman[0].level()
 
     def level(self):
         self.ardman[0].level()

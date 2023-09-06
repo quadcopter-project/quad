@@ -48,7 +48,7 @@ def gen_lift_rpm2_plot(paths: str|list):
 def gen_cl_height_plot(paths: str|list):
     # fig = os.path.join(path, 'cl-height.pdf')
     data_list = processor.get_data_list(paths)
-    processor.cl_height_plot(data_list, fig = fig,avg =True, rpm_range = [0,12000])
+    processor.cl_height_plot(data_list, fig = fig,avg =True,fit = False, rpm_range = [0,12000])
 
 
 def gen_3d_plot(paths: str|list):
@@ -60,13 +60,20 @@ def gen_ln_cl_ln_height_plot(paths: str|list):
     data_list = processor.get_data_list(paths)
     processor.ln_cl_ln_height_plot(data_list, fig=fig,avg =True, offset= 0)
 
+def gen_cl_height_multiple_plot(paths: str|list):
+    data_lists = []
+    for path in paths:
+        data_lists.append(processor.get_data_list(path))
+    processor.cl_height_plot_multiple(data_lists, fig=fig, fit = True ,avg=True)
+
+
 
 if __name__ == '__main__':
-    path = '../raw/bf2/160mm_prop_spacing_4inch_prop'
+    path = ['../raw/bf2/160mm_prop_spacing_4inch_prop']
     # gen_w2_norm_plots('../raw/snap/07-14/')
     #gen_lift_rpm2_plot(path)
     # gen_3d_plot(path)
-    #gen_ln_cl_ln_height_plot(path)
-    gen_cl_height_plot(path)
+    # gen_ln_cl_ln_height_plot(path)
+    #gen_cl_height_plot(path)
     #gen_lift_rpm2_plot(path)
-
+    gen_cl_height_multiple_plot(path)

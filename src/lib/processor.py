@@ -411,10 +411,9 @@ def cl_w_plot(data_list: list, avg: bool = True, fig: str = None, **kwargs):
 
 # plot a graph of CL (coefficient of lift) against height.
 # avg = True: take time-average of mean_rpm and total_mass.
-def cl_height_plot(data_list: list, avg: bool = True, fig: str = None, **kwargs):
+def cl_height_plot(data_list: list, avg: bool = True,fit: bool = True, fig: str = None, **kwargs):
     plt.ioff()
     plt.clf()
-
     result_by_batch = get_result_by_batch(data_list, **kwargs)
 
     # cl: coefficient of lift
@@ -438,36 +437,32 @@ def cl_height_plot(data_list: list, avg: bool = True, fig: str = None, **kwargs)
 
     # fit using the assumption that ground effect behaves as the eqn
     # values of height (x) are made non dimensional by dividing by prop_spacing
-    prop_spacing = 16
 
-    def ground_effect(x,c1,c2,c3):
-        c0 =0
-        c4 =3
-        return np.piecewise(x,[x < c0, x >= c0], [lambda x: c1/(np.power((c0+c4)/prop_spacing,c3))+c2, lambda x: c1/(np.power((x+c4)/prop_spacing,c3))+c2])
+    if (fit == True) :
+        prop_spacing = 16
 
-    # initial parameters for ground effect
+        def ground_effect(x,c1,c2,c3):
+            c0 =0
+            c4 =3
+            return np.piecewise(x,[x < c0, x >= c0], [lambda x: c1/(np.power((c0+c4)/prop_spacing,c3))+c2, lambda x: c1/(np.power((x+c4)/prop_spacing,c3))+c2])
 
-    p0_ground = np.asarray([4e-6, 2.3e-6, 1])
-    def pipe_effect(x, c5, c6,c7):
-        return np.piecewise(x, [x < 0, x >= 0], [lambda x: 0, lambda x: -c5 * (x/prop_spacing) / (np.power(c7, x/prop_spacing*c6))])
+        def pipe_effect(x, c5, c6,c7):
+            return np.piecewise(x, [x < 0, x >= 0], [lambda x: 0, lambda x: -c5 * (x/prop_spacing) / (np.power(c7, x/prop_spacing*c6))])
 
 
-    def overall_effect(x,c1,c2,c3,c5,c6,c7):
-        return(ground_effect(x,c1,c2,c3)+pipe_effect(x, c5, c6,c7))
+        def overall_effect(x,a1,a2,a3,e1,e2):
+            return(a1*(1+np.power((x/a2),e1))*(1/(1+np.power((x/a3),e2))))
 
-    fit , cov = scipy.optimize.curve_fit(overall_effect,x_cl,y_cl,p0 = np.asarray([1e-6, 2.3e-6, 1,1,1,1]),maxfev = 10000,bounds =([-5,-5,-5,-5,0,-5],[5,5,5,5,5,5]))
+        fit , cov = scipy.optimize.curve_fit(overall_effect,x_cl,y_cl,p0 = np.asarray([1,3,50,-1,-1]),maxfev = 10000)
 
-    plt.subplot(2,1,1)
-    x_ref = np.linspace(min(x_cl), max(x_cl), 1000)
-    plt.plot(x_ref,overall_effect(x_ref,*fit))
-    overall_residual = [a-b for a,b in zip(y_cl, [overall_effect(a,*fit) for a in x_cl])]
-    plt.plot(x_ref,ground_effect(x_ref,*fit[0:3]))
-    # moved up by 2.2e-6 for better reference
-    plt.plot(x_ref,pipe_effect(x_ref,*fit[3:6])+2.2e-6)
-    plt.subplot(2,1,2)
-    plt.plot(x_cl,overall_residual)
-    plt.plot(x_ref,np.zeros(len(x_ref)))
-    print(fit)
+        plt.subplot(2,1,1)
+        x_ref = np.linspace(min(x_cl), max(x_cl), 1000)
+        plt.plot(x_ref,overall_effect(x_ref,*fit))
+        overall_residual = [a-b for a,b in zip(y_cl, [overall_effect(a,*fit) for a in x_cl])]
+        plt.subplot(2,1,2)
+        plt.plot(x_cl,overall_residual)
+        plt.plot(x_ref,np.zeros(len(x_ref)))
+        print(fit)
 
     # try a range of C4, calculate the residuals of optimal fits with a given C4
     # a reasonable c4 value is 3
@@ -506,6 +501,76 @@ def cl_height_plot(data_list: list, avg: bool = True, fig: str = None, **kwargs)
     plt.show()
     plt.clf()
 
+def cl_height_plot_multiple(data_lists: list, avg: bool = True,fit: bool = True, fig: str = None, **kwargs):
+    plt.ioff()
+    plt.clf()
+    multi_data = []
+
+    for i in range(len(data_lists)):
+        result_by_batches=(get_result_by_batch(data_lists[i], **kwargs))
+
+        # cl: coefficient of lift
+        x_cl, y_cl, yerr_cl = ([] for i in range(3))
+
+        for (height, timestamp), result_by_rpm in result_by_batches.items():
+            x, y, xerr, yerr = lift_rpm(result_by_rpm, avg)
+            x = [xx ** 2 for xx in x]
+
+            res = scipy.stats.linregress(x, y)
+            x_cl.append(height)
+            y_cl.append(res.slope)
+            yerr_cl.append(res.stderr)
+        # store multiple sets of data for different drone size
+        multi_data.append([x_cl,y_cl,yerr_cl])
+
+        # plot error bar for each datapoint
+    for i in range(len(multi_data)):
+        x_cl, y_cl, yerr_cl = multi_data[i]
+        for i in range(len(x_cl)):
+            errorbar_plot(x_cl[i], y_cl[i], yerr=yerr_cl[i])
+    plt.subplot(2,1,1)
+    plt.title('CL against height')
+    plt.xlabel('height / cm')
+    plt.ylabel('CL / (g s^2)')
+
+    # fit and plot fitted line for each set of data
+    def overall_effect(x, a1, a2, a3, a4, a5):
+        e1 = -3
+        e2 =-2
+        return (a1 * (1 + np.power(((x+a5)/ a2), e1)) * (1 / (1 + np.power(((x+a5)/ a3), e2)))+a4)
+
+    # define fitting parameters for each set of data
+    # manually setting each for now
+    fit_init = [[1e-6, 40, 100, 2e-6, 3],
+                [1e-6, 40, 100, 2e-6, 3]]
+
+    exponents = [[-1,-1],
+                 [-1,-1]]
+
+    parameters = []
+    covs = []
+
+    if (fit == True):
+        for i in range(len(multi_data)):
+            x_cl, y_cl, yerr_cl = multi_data[i]
+            parameter, cov = scipy.optimize.curve_fit(overall_effect, x_cl, y_cl, p0=np.asarray(fit_init[i]),maxfev=10000)
+            parameters.append(parameter)
+            covs.append(cov)
+            plt.subplot(2, 1, 1)
+            x_ref = np.linspace(min(x_cl), max(x_cl), 1000)
+            plt.plot(x_ref, overall_effect(x_ref, *parameter))
+            plt.plot(x_ref,overall_effect(x_ref,*fit_init[i]))
+            overall_residual = [a - b for a, b in zip(y_cl, [overall_effect(a, *parameter) for a in x_cl])]
+            plt.subplot(2, 1, 2)
+            plt.plot(x_cl, overall_residual)
+            plt.plot(x_ref, np.zeros(len(x_ref)))
+    print(parameters)
+
+
+    if fig:
+        plt.savefig(fig)
+    plt.show()
+    plt.clf()
 
 # offset: amount to ADD TO each CL by, before taking ln/ln.
 def ln_cl_ln_height_plot(data_list: list, avg: bool = True, fig: str = None, offset: float = 0, **kwargs):
