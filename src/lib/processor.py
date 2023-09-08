@@ -314,14 +314,14 @@ def lift_rpm(result_by_rpm: dict, avg: bool = True):
 # linreg: perform linear regression and plot line of same color.
 # **kwargs will be passed into plt.errorbar().
 # useful for e.g. labelling the lines.
-def errorbar_plot(x: list, y: list, xerr: list = None, yerr: list = None, linreg: bool = False, **kwargs):
+def errorbar_plot(x: list, y: list, xerr: list = None, yerr: list = None, linreg: bool = False,marker : str = 'x', **kwargs):
     plt.subplot(2, 1, 1)
     lines = plt.errorbar(x, y,
                          xerr = xerr,
                          yerr = yerr,
                          **kwargs,
                          ls = '',
-                         marker = 'x',
+                         marker = marker,
                          markersize = 3,
                          elinewidth = 1)
 
@@ -501,10 +501,14 @@ def cl_height_plot(data_list: list, avg: bool = True,fit: bool = True, fig: str 
     plt.show()
     plt.clf()
 
-def cl_height_plot_multiple(data_lists: list, avg: bool = True,fit: bool = True, fig: str = None, **kwargs):
+# this is function to plot for multiple sets of data and multiple fit functions
+
+def cl_height_plot_multiple(data_lists: list, avg: bool = True,fit: bool = True, fig: str = None, model: int = 1, **kwargs):
     plt.ioff()
     plt.clf()
     multi_data = []
+
+    markers = ['x','o']
 
     for i in range(len(data_lists)):
         result_by_batches=(get_result_by_batch(data_lists[i], **kwargs))
@@ -526,45 +530,108 @@ def cl_height_plot_multiple(data_lists: list, avg: bool = True,fit: bool = True,
         # plot error bar for each datapoint
     for i in range(len(multi_data)):
         x_cl, y_cl, yerr_cl = multi_data[i]
-        for i in range(len(x_cl)):
-            errorbar_plot(x_cl[i], y_cl[i], yerr=yerr_cl[i])
+        for j in range(len(x_cl)):
+            errorbar_plot(x_cl[j], y_cl[j], yerr=yerr_cl[j], marker = markers[i])
     plt.subplot(2,1,1)
     plt.title('CL against height')
     plt.xlabel('height / cm')
     plt.ylabel('CL / (g s^2)')
 
     # fit and plot fitted line for each set of data
-    def overall_effect(x, a1, a2, a3, a4, a5):
-        e1 = -3
+    # different models to fit data
+    prop_spacings = [16,24]
+    prop_radii = [5.08,5.08]
+
+    def model_1(x, a1, a2, a3):
+        # multiplicative solution with powers -4 and -2
+        a5 = 3
+        e1 = -4
         e2 =-2
-        return (a1 * (1 + np.power(((x+a5)/ a2), e1)) * (1 / (1 + np.power(((x+a5)/ a3), e2)))+a4)
+        return (a1 * (1 + np.power(((x+a5)/ a2), e1)) * (1 / (1 + np.power(((x+a5)/ a3), e2))))
 
-    # define fitting parameters for each set of data
-    # manually setting each for now
-    fit_init = [[1e-6, 40, 100, 2e-6, 3],
-                [1e-6, 40, 100, 2e-6, 3]]
 
-    exponents = [[-1,-1],
-                 [-1,-1]]
+    def model_2(x,T_oge):
+        # Sanchez-Cuevas
+        Kb = 2
+        z = x
+        term1 = 1 - (prop_radius / (4 * z)) ** 2
+        term2 = -prop_radius ** 2 * (z / (prop_spacing ** 2 + 4 * z ** 2) ** (3 / 2))
+        term3 = -(prop_radius ** 2 / 2) * (z / (2 * prop_spacing ** 2 + 4 * z ** 2) ** (3 / 2))
+        term4 = -2 * prop_radius ** 2 * (z / ((2 ** 0.5 * prop_spacing) ** 2 + 4 * z ** 2) ** (3 / 2) * Kb) ** -1
+        T_ige = T_oge/(term1+term2+term3+term4)
+        return T_ige
 
-    parameters = []
-    covs = []
+    def model_3(x,T_oge,x_offset):
+        z = x+x_offset
+        T_ige = T_oge*np.power((0.9926+0.03794/(np.power(z/2/prop_radius,2))),2/3)
+
+        return T_ige
 
     if (fit == True):
-        for i in range(len(multi_data)):
-            x_cl, y_cl, yerr_cl = multi_data[i]
-            parameter, cov = scipy.optimize.curve_fit(overall_effect, x_cl, y_cl, p0=np.asarray(fit_init[i]),maxfev=10000)
-            parameters.append(parameter)
-            covs.append(cov)
-            plt.subplot(2, 1, 1)
-            x_ref = np.linspace(min(x_cl), max(x_cl), 1000)
-            plt.plot(x_ref, overall_effect(x_ref, *parameter))
-            plt.plot(x_ref,overall_effect(x_ref,*fit_init[i]))
-            overall_residual = [a - b for a, b in zip(y_cl, [overall_effect(a, *parameter) for a in x_cl])]
-            plt.subplot(2, 1, 2)
-            plt.plot(x_cl, overall_residual)
-            plt.plot(x_ref, np.zeros(len(x_ref)))
-    print(parameters)
+
+        if (model == 1):
+            fit_init_1 = [[1e-6, 40, 100],
+                          [1e-6, 40, 100]]
+
+            exponents_1 = [[-1, -1],
+                           [-1, -1]]
+
+            parameters_1 = []
+            covs_1 = []
+
+            for i in range(len(multi_data)):
+                x_cl, y_cl, yerr_cl = multi_data[i]
+                parameter, cov = scipy.optimize.curve_fit(model_1, x_cl, y_cl, p0=np.asarray(fit_init_1[i]),maxfev=10000)
+                parameters_1.append(parameter)
+                covs_1.append(cov)
+                plt.subplot(2, 1, 1)
+                x_ref = np.linspace(min(x_cl), max(x_cl), 1000)
+                plt.plot(x_ref, model_1(x_ref, *parameter))
+                #plt.plot(x_ref,model_1(x_ref,*fit_init_1[i]))
+                overall_residual = [a - b for a, b in zip(y_cl, [model_1(a, *parameter) for a in x_cl])]
+                plt.subplot(2, 1, 2)
+                plt.plot(x_cl, overall_residual)
+                plt.plot(x_ref, np.zeros(len(x_ref)))
+            print(parameters_1)
+
+        if(model == 2):
+            parameters_2 = []
+            covs_2 = []
+            for i in range(len(multi_data)):
+                prop_spacing = prop_spacings[i]
+                prop_radius = prop_radii[i]
+                x_cl, y_cl, yerr_cl = multi_data[i]
+                parameter,cov = scipy.optimize.curve_fit(model_2,x_cl,y_cl,p0 = np.asarray([2.5e-6]),maxfev=10000)
+                parameters_2.append(parameter)
+                covs_2.append(cov)
+                plt.subplot(2, 1, 1)
+                x_ref = np.linspace(min(x_cl), max(x_cl), 1000)
+                plt.plot(x_ref, model_2(x_ref, *parameter))
+                overall_residual = [a - b for a, b in zip(y_cl, [model_2(a, *parameter) for a in x_cl])]
+                plt.subplot(2, 1, 2)
+                plt.plot(x_cl, overall_residual)
+                plt.plot(x_ref, np.zeros(len(x_ref)))
+            print(parameters_2)
+
+        if(model == 3):
+            parameters_3 = []
+            covs_3 = []
+            for i in range(len(multi_data)):
+                prop_spacing = prop_spacings[i]
+                prop_radius = prop_radii[i]
+                x_cl, y_cl, yerr_cl = multi_data[i]
+                parameter, cov = scipy.optimize.curve_fit(model_3, x_cl, y_cl, maxfev=10000)
+                parameters_3.append(parameter)
+                covs_3.append(cov)
+                plt.subplot(2, 1, 1)
+                x_ref = np.linspace(min(x_cl), max(x_cl), 1000)
+                plt.plot(x_ref, model_3(x_ref, *parameter))
+                overall_residual = [a - b for a, b in zip(y_cl, [model_3(a, *parameter) for a in x_cl])]
+                plt.subplot(2, 1, 2)
+                plt.plot(x_cl, overall_residual)
+                plt.plot(x_ref, np.zeros(len(x_ref)))
+            print(parameters_3)
+
 
 
     if fig:
