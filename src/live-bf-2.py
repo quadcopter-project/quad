@@ -45,7 +45,7 @@ class BFLive:
         self.ardman[0].set_height(height, block = True)
 
     # move by steps, then level if needed.
-    def move_level(self, steps: int):
+    def move_level(self, steps: list):
         self.ardman.move(steps, block = True)
         #self.ardman[0].level()
 
@@ -124,14 +124,16 @@ if __name__ == '__main__':
     rpm_queue = [2000, 4000] + np.linspace(6000, 12000, 7).tolist()
     rec_t = 30
     transient = 5
-    rec_path = '../raw/bf2/320mm_prop_spacing_4inch_prop'
+    rec_path = '../raw/bf2/240mm_prop_spacing_4inch_prop_retest'
     live = BFLive(path = rec_path)
     while True:
         print('betaflight-2 testing')
         choice = input('(m)ove, (l)evel, (h)eight, (s)tart: ')
         match choice:
             case 'm':
-                live.move_level(int(input('steps: ')))
+                target = input('steps: ').strip().split()
+                target = [int(step) for step in target]
+                live.move_level(target)
             case 'l':
                 live.level()
             case 'h':
@@ -141,4 +143,3 @@ if __name__ == '__main__':
                            rpm_queue = rpm_queue,
                            rec_t = rec_t,
                            transient = transient)
-

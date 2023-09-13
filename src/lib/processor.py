@@ -363,7 +363,6 @@ def lift_rpm2_plot(data_list: list, avg: bool = True, fig: str = None, **kwargs)
     plt.ylabel('lift / g')
     plt.legend(ncol = 4, loc = 'upper left', fontsize = 5)
     plt.title('Lift against rpm^2 plot')
-
     plt.subplot(2,1,2)
     plt.xlabel('rpm^2 / min^-2')
     plt.ylabel('residual / g')
@@ -503,12 +502,12 @@ def cl_height_plot(data_list: list, avg: bool = True,fit: bool = True, fig: str 
 
 # this is function to plot for multiple sets of data and multiple fit functions
 
-def cl_height_plot_multiple(data_lists: list, avg: bool = True,fit: bool = True, fig: str = None, model: int = 1, **kwargs):
+def cl_height_plot_multiple(data_lists: list,data_choice:list = [0,2], avg: bool = True,fit: bool = True, fig: str = None, model: int = 1, **kwargs):
     plt.ioff()
     plt.clf()
     multi_data = []
 
-    markers = ['x','o']
+    markers = ['x','o','s','v']
 
     for i in range(len(data_lists)):
         result_by_batches=(get_result_by_batch(data_lists[i], **kwargs))
@@ -528,7 +527,7 @@ def cl_height_plot_multiple(data_lists: list, avg: bool = True,fit: bool = True,
         multi_data.append([x_cl,y_cl,yerr_cl])
 
         # plot error bar for each datapoint
-    for i in range(len(multi_data)):
+    for i in data_choice:
         x_cl, y_cl, yerr_cl = multi_data[i]
         for j in range(len(x_cl)):
             errorbar_plot(x_cl[j], y_cl[j], yerr=yerr_cl[j], marker = markers[i])
@@ -539,8 +538,8 @@ def cl_height_plot_multiple(data_lists: list, avg: bool = True,fit: bool = True,
 
     # fit and plot fitted line for each set of data
     # different models to fit data
-    prop_spacings = [16,24]
-    prop_radii = [5.08,5.08]
+    prop_spacings = [16,24,32,24]
+    prop_radii = [5.08,5.08,5.08,5.08]
 
     def model_1(x, a1, a2, a3):
         # multiplicative solution with powers -4 and -2
@@ -553,11 +552,11 @@ def cl_height_plot_multiple(data_lists: list, avg: bool = True,fit: bool = True,
     def model_2(x,T_oge):
         # Sanchez-Cuevas
         Kb = 2
-        z = x
+        z = x+2
         term1 = 1 - (prop_radius / (4 * z)) ** 2
         term2 = -prop_radius ** 2 * (z / (prop_spacing ** 2 + 4 * z ** 2) ** (3 / 2))
         term3 = -(prop_radius ** 2 / 2) * (z / (2 * prop_spacing ** 2 + 4 * z ** 2) ** (3 / 2))
-        term4 = -2 * prop_radius ** 2 * (z / ((2 ** 0.5 * prop_spacing) ** 2 + 4 * z ** 2) ** (3 / 2) * Kb) ** -1
+        term4 = -2 * prop_radius ** 2 * (z / ((2 ** 0.5 * prop_spacing) ** 2 + 4 * z ** 2) ** (3 / 2) * Kb)
         T_ige = T_oge/(term1+term2+term3+term4)
         return T_ige
 
@@ -752,6 +751,26 @@ def rpm_height_3d_plot(data_list: list, avg:bool = True, fig: str = None, **kwar
 
     plt.show()
     plt.clf()
+
+# extract data as a list for further processing
+def extractor(data_lists: list,avg:bool = False,**kwargs):
+
+    multi_data = []
+    prop_spacings = [16, 24, 32]
+    prop_radii = [5.08, 5.08, 5.08]
+
+    for i in range(len(data_lists)):
+        result_by_batches=(get_result_by_batch(data_lists[i], **kwargs))
+        for (height, timestamp), result_by_rpm in result_by_batches.items():
+            x,y,xerr,yerr = lift_rpm(result_by_rpm, avg)
+            for j in range(len(x)):
+                multi_data.append([x[j],y[j],height,prop_spacings[i],prop_radii[i]])
+    print(len(multi_data))
+    return multi_data
+
+
+
+
 
 
 """
