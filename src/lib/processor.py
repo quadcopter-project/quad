@@ -507,7 +507,7 @@ def cl_height_plot_multiple(data_lists: list,data_choice:list = [0,2], avg: bool
     plt.clf()
     multi_data = []
 
-    markers = ['x','o','s','v']
+    markers = ['x','o','s','v','^']
 
     for i in range(len(data_lists)):
         result_by_batches=(get_result_by_batch(data_lists[i], **kwargs))
@@ -538,8 +538,8 @@ def cl_height_plot_multiple(data_lists: list,data_choice:list = [0,2], avg: bool
 
     # fit and plot fitted line for each set of data
     # different models to fit data
-    prop_spacings = [16,24,32,24]
-    prop_radii = [5.08,5.08,5.08,5.08]
+    prop_spacings = [16,24,32,24,12]
+    prop_radii = [5.08,5.08,5.08,5.08,5.08]
 
     def model_1(x, a1, a2, a3):
         # multiplicative solution with powers -4 and -2
@@ -768,10 +768,42 @@ def extractor(data_lists: list,avg:bool = False,**kwargs):
     print(len(multi_data))
     return multi_data
 
+# interpolate and find the offset between the two runs of the same parameters
+def same_parameter_comparison(data_lists: list,**kwargs):
 
+    # assuming 0 has more data than 1
+    x_cl = [[], []]
+    y_cl = [[], []]
+    for i in [0,1]:
+        result_by_batch = get_result_by_batch(data_lists[i], **kwargs)
+        for (height, timestamp), result_by_rpm in result_by_batch.items():
+            x, y, xerr, yerr = lift_rpm(result_by_rpm, avg= True)
+            x = [xx ** 2 for xx in x]
+            res = scipy.stats.linregress(x, y)
+            x_cl[i].append(height)
+            y_cl[i].append(res.slope)
+    #first row contain the height and second row contain diff in cl
+    diff = [[],[]]
+    for i in range(len(x_cl[1])):
+        if (x_cl[1][i] >= min(x_cl[0]) and x_cl[1][i] <= max(x_cl[0])):
+            # directly subtract when matching height found
+            if (x_cl[1][i]==x_cl[0][i]):
+                diff[0].append(x_cl[1][i])
+                diff[1].append(y_cl[1][i]-y_cl[0][i])
+            # interpolate when not found
+            else:
+                lhs_index = x_cl[0].index(max((num for num in x_cl[0] if num < x_cl[1][i]), key=lambda x: x))
+                rhs_index = x_cl[0].index(max((num for num in x_cl[0] if num > x_cl[1][i]), key=lambda x: x))
+                grad = (y_cl[0][rhs_index]-y_cl[0][lhs_index])/(x_cl[0][rhs_index]-x_cl[0][lhs_index])
+                diff[0].append(x_cl[1][i])
+                diff[1].append(y_cl[1][i]-(y_cl[0][lhs_index]+grad*(x_cl[1][i]-x_cl[0][lhs_index])))
 
-
-
+    plt.plot(diff[0],diff[1])
+    plt.plot(diff[0],[np.mean(diff[1])]*len(diff[0]))
+    plt.title('diff between the two runs of the 240mm drone')
+    plt.xlabel('height / cm')
+    plt.ylabel('diff in CL / (g s^2)')
+    plt.show()
 
 """
 LOAD CELL processing functions
