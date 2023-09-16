@@ -16,15 +16,15 @@ betaflight-configurator. We also have `live.py` and `rec.py` for actually
 conducting experiments. They rely on `utils.py` to work, which contains
 `Arduino`, `Writer`, `Plotter` and `Recorder` classes.
 
-## Use
+## Setup
 
-First, clone the repo along with submodules: `git clone
---recurse-submodules --remote-submodules $URL`.  At this stage, the submodules
-could potentially have a detached HEAD (e.g. you forgot `--remote-submodules`,
-or submodule has not been bumped in main).  To resolve this one needs to run
-`git checkout main` in the submodule directories before making any commits in
-them.  If you have already cloned the repo, then try `git submodule update
---init`, then again checkout main.
+First, clone the repo along with submodules: `git clone --recurse-submodules
+--remote-submodules $URL`.  At this stage, the submodules could potentially have
+a detached HEAD (e.g. you forgot `--remote-submodules`, or submodule has not
+been bumped in main).  To resolve this one needs to run `git checkout main` in
+the submodule directories before making any commits in them.  If you have
+already cloned the repo, then try `git submodule update --init`, then again
+checkout main.
 
 In order to use this project, one likely needs to prepare a python `venv` (for
 python dependencies): The packages sourced in this project can be found in
@@ -33,6 +33,16 @@ python dependencies): The packages sourced in this project can be found in
 Use `nvm` to get the correct version of `npm` for `betaflight-configurator`. The
 configurator will also likely need to be recompiled: Follow README instructions
 in `bf-conf/`.
+
+## Use
+
+For usage of the code, the user is referred to the `README` files in the
+subdirectories.
+
+Python code is divided into libraries (`src/lib`) and experimental /
+postprocessing parts (`src`). Most of the functions have been annotated with
+input/output and their usage, and a brief introduction to the libraries can be
+found in `src/lib/README.md`.
 
 ## Development
 
