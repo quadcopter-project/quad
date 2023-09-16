@@ -420,18 +420,24 @@ class Plotter:
 # on the mic, so we we MUST connect the extension to the mic first, then between that cable and
 # our laptop, the converter cable.
 class Recorder:
-    CHUNK = 1024  # Record in chunks of 1024 samples
-    STARTUP_TIME = 3
-    SAMPLE_FORMAT = pyaudio.paFloat32
-    CHANNELS = 1
-    FS = 48000  # Record at 44100 samples per second
-    dt = 1 / FS
-    DEVICE_INDEX = None
+    chunk = 1024  # Record in chunks of 1024 samples
+    startup_time = 3
+    sample_format = pyaudio.paFloat32
+    channels = 1
+    fs = 48000  # Record at 44100 samples per second
+    dt = 1 / fs
+    device_index = None # A default device index
 
     # PRIVATE METHODS
     # device_name: which device to record from.
+    # kwargs: user-specified pyaudio settings.
     # defaults to linux system with pipewire.
-    def __init__(self, device_name: str = 'pipewire'):
+    def __init__(self, device_name: str = 'pipewire', **kwargs):
+        for kw, val in kwargs:
+            # overload the defaults
+            if hasattr(self, kw):
+                setattr(self, kw, val)
+
         self.pa = pyaudio.PyAudio()
 
         # don't use 'not' keyword in case index is 0
@@ -440,26 +446,28 @@ class Recorder:
         for i in range (0, numdevices):
             device = self.pa.get_device_info_by_host_api_device_index(0, i)
             if device.get('maxInputChannels') > 0 and device_name in device.get('name'):
-                self.DEVICE_INDEX = i
+                self.device_index = i
                 break
 
         # not specified, nor is the device found.
-        if self.DEVICE_INDEX is None:
+        if self.device_index is None:
             raise Exception(f'utils:: Recorder: Device {device_name} not found. Use get_outputs to see output list.')
 
-        self.stream = self.pa.open(format=self.SAMPLE_FORMAT,
-                                   channels=self.CHANNELS,
-                                   rate=self.FS,
-                                   frames_per_buffer=self.CHUNK,
+        self.stream = self.pa.open(format=self.sample_format,
+                                   channels=self.channels,
+                                   rate=self.fs,
+                                   frames_per_buffer=self.chunk,
                                    input=True,
-                                   input_device_index=self.DEVICE_INDEX)
-        self.record(3)  # rid of weird junk at start
+                                   input_device_index=self.device_index,
+                                   # still pass it in just in case other pa options are specified
+                                   **kwargs)
+        self.record(self.startup_time)  # rid of weird junk at start
         
     # get raw data; not parsed to avoid overhead during rec.
     # return -> raw_chunk: bytes
     def get_chunk(self) -> bytes:
         # Workaround for input overflowed error
-        raw_chunk = self.stream.read(self.CHUNK, exception_on_overflow = False)
+        raw_chunk = self.stream.read(self.chunk, exception_on_overflow = False)
         return raw_chunk
 
     # parse raw_audio received from get_chunk to numbers.
@@ -523,11 +531,11 @@ class Numerical:
     # high-pass filter.
     # audio: list of amplitudes by time.
     # cutoff: cutoff freqeuency for filter (Hz)
-    # FS: samples per second of audio. See Recorder.
+    # fs: samples per second of audio. See Recorder.
     # return -> filtered list.
     @staticmethod
-    def freq_filter(audio:list, cutoff:float, FS: float) -> list:
-        b, a = signal.butter(5, cutoff / (0.5*FS), btype='high', analog = False)  
+    def freq_filter(audio:list, cutoff:float, fs: float) -> list:
+        b, a = signal.butter(5, cutoff / (0.5*fs), btype='high', analog = False)  
         return signal.filtfilt(b, a, audio)
 
     # find peaks in an x-y plot.
