@@ -1,23 +1,25 @@
 """
-Revised version of Plotter class.
-NOTE:   This will BREAK old code, specifically right at the initialiser.
-        However legacy code can be rectified with relative ease, by constructing the desired graph_types to pass in. 
+Plots in a non-blocking manner: Revised version of utils.Plotter.
 
-plots in a non-blocking manner.
-When adding a new plot method, one must modify the following:
+NOTE:
+This will BREAK old code, specifically right at the initialiser.
+However legacy code can be rectified with relative ease, by constructing the desired graph_types to pass in. 
+
+When adding a new plot method, one must modify the following,
+replacing (graph_type) with your actual graph_type name:
     - SUPPORTED: list
         Append to it your graph_type.
-    - XLABELS: dict                             (if not 'time / s')
+    - XLABELS: dict                                     (if xlabel is not 'time / s')
         graph_type -> xlabel
     - YLABELS: dict
     - TITLES: dict
-    - init_(graph_type) function                    (if required)
-    - update_(graph_type) function                  (if required)
-    - get_(graph_type) function in lib.Data         (if using update_generic) 
-    - get_(graph_type)_vec function in lib.Frame    (if using update_generic_vec) 
-    - get_(graph_type)_vec function in lib.Data     (if using update_generic_comp)
+    - init_(graph_type) function                        (if required)
+    - update_(graph_type) function                      (if required)
+    - lib.Frame.(graph_type) must exist, or...          (if using update_generic)
+    - ... get_(graph_type) function in lib.Frame        (if using update_generic)
+    - get_(graph_type)_vec function in lib.Frame        (if using update_generic_(type), type = vec, comp)
 
-    vector plotters must end with _vec for generic functions to recognise them automatically.
+    vector plotting functions must end with _vec for generic functions to recognise them automatically;
     they also don't require an XLABEL or YLABEL.
 
     plotting vectors by component is handled by _comp functions.
