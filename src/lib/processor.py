@@ -22,6 +22,148 @@ from numbers import Number
 
 
 """
+GENERIC processing functions
+"""
+# plot an errorbar plot.
+# linreg: perform linear regression and plot line of same color.
+# **kwargs will be passed into plt.errorbar().
+# useful for e.g. labelling the lines.
+def errorbar_plot(x: list, y: list, xerr: list = None, yerr: list = None, linreg: bool = False,marker : str = 'x', **kwargs):
+    plt.subplot(2, 1, 1)
+    lines = plt.errorbar(x, y,
+                         xerr = xerr,
+                         yerr = yerr,
+                         **kwargs,
+                         ls = '',
+                         marker = marker,
+                         markersize = 3,
+                         elinewidth = 1)
+
+    if linreg:
+        # best fit line
+        linecolor = lines[0].get_color()
+        res = scipy.stats.linregress(x, y)
+        y_fit = [res.slope * xx + res.intercept for xx in x]
+        
+        plt.plot(x, y_fit, color = linecolor, linewidth = 1)
+        return y_fit
+
+
+# filter a list with z-values, IQR and percentile limit.
+# if none of these are specified, no values are filtered.
+# return -> indices: list. indices of outlier items.
+def get_outlier_indices(x: list, z: float = None, iqr_factor: float = None, percentile_limit: float = 0) -> list:
+    if (percentile_limit >= 100
+        or (z and z < 0)
+        or (iqr_factor and iqr_factor < 0)):
+        raise ValueError(':get_outlier_indices: Invalid statistical parameters supplied.')
+
+    # can't do statistics
+    if len(x) < 2:
+        return []
+
+    indices = list()
+    mean = st.mean(x)
+    stdev = st.stdev(x)
+    q3, q1 = np.percentile(x, [75, 25])
+    iqr = q3 - q1
+    percentile_l, percentile_r = np.percentile(x, [0 + percentile_limit, 100 - percentile_limit])
+    
+    for i in range(len(x)):
+        val = x[i]
+        # only need to satisfy one of these criteria to be removed.
+        if z is not None and stdev and abs(val - mean) / stdev > z:
+            indices.append(i)
+        elif (iqr_factor is not None
+            and (val > q3 + iqr_factor * iqr or val < q1 - iqr_factor * iqr)):
+            indices.append(i)
+        elif val > percentile_r or val < percentile_l:
+            indices.append(i)
+        
+    return indices 
+
+
+# remove elements at positions {indices} in list {x}
+# return -> filtered list of x
+def remove_by_indices(x: list, indices: list) -> list:
+    return [x[i] for i in range(len(x)) if i not in indices]
+
+
+# axes: list, or potentially list of lists, corresponding to many axes of the same data set.
+# no_outlier: a list of indices where we don't attempt to find outliers.
+#             Needed for independent variables.
+# **kwargs: filtering options, see arguments of get_outlier_indices
+# return -> list: modified axes (original 1d/2d form preserved)
+def remove_outliers(axes: list, no_outlier: int|list = [], **kwargs) -> list:
+    # create shallow copy to avoid altering original
+    axes = [el for el in axes]
+
+    # treat single list case first
+    if (len(axes) == 0 or isinstance(axes[0], Number)):
+        outlier_indices = get_outlier_indices(axes, **kwargs)
+        return remove_by_indices(axes, outlier_indices)
+    
+    # sanity check: must be at least uniform 2D list.
+    l = len(axes[0])
+    for axis in axes:
+        if l != len(axis):
+            raise IndexError('(E) remove_outliers: Lists of different lengths supplied.')
+
+    if type(no_outlier) is int:
+        no_outlier = [no_outlier]
+
+    outlier_indices = set()
+    # find all the outlier indices first
+    for i in range(len(axes)):
+        if i in no_outlier:
+            continue
+        outlier_indices = outlier_indices | set(get_outlier_indices(axes[i], **kwargs))
+
+    # remove corresponding elements in each axis.
+    for i in range(len(axes)):
+        axes[i] = remove_by_indices(axes[i], outlier_indices)
+
+    return axes
+
+
+# return if {val} is in [l, r).
+# if either l or r is None, that side of the limit is ignored.
+# return -> True if in range, False otherwise.
+def in_range(val: float, l: float = None, r: float = None) -> bool:
+    return (l is None or l < val) and (r is None or val < r)
+
+
+# get a list of the paths to all the valid files (json) in a folder
+# paths: the folder(s) to look at, non-recursive.
+# return -> list of paths to valid files.
+def get_data_files(paths: str|list) -> list:
+    data_files = list() 
+    if type(paths) is str:
+        paths = [paths]
+
+    for path in paths:
+        data_files.extend(
+                [os.path.join(path, name) 
+                for name in os.listdir(path) 
+                if os.path.isfile(os.path.join(path, name))
+                and name.split('.')[-1] == 'json']
+                )
+    return data_files
+
+
+# return a list of Data objects loaded from json files in {paths}.
+def get_data_list(paths: str|list) -> list:
+    data_list = list()
+    data_files = get_data_files(paths)
+    for name in data_files:
+        data = Data()
+        data.load(name)
+        data_list.append(data)
+
+    return data_list
+
+
+"""
 SNAPTAIN processing functions 
 """
 # takes in a Data object, and for each frame, pick the most prominent peak in [fl, fr].
@@ -308,32 +450,6 @@ def lift_rpm(result_by_rpm: dict, avg: bool = True):
                 yerr.append(0)
 
     return x, y, xerr, yerr
-
-
-# plot an errorbar plot.
-# linreg: perform linear regression and plot line of same color.
-# **kwargs will be passed into plt.errorbar().
-# useful for e.g. labelling the lines.
-def errorbar_plot(x: list, y: list, xerr: list = None, yerr: list = None, linreg: bool = False,marker : str = 'x', **kwargs):
-    plt.subplot(2, 1, 1)
-    lines = plt.errorbar(x, y,
-                         xerr = xerr,
-                         yerr = yerr,
-                         **kwargs,
-                         ls = '',
-                         marker = marker,
-                         markersize = 3,
-                         elinewidth = 1)
-
-    if linreg:
-        # best fit line
-        linecolor = lines[0].get_color()
-        res = scipy.stats.linregress(x, y)
-        y_fit = [res.slope * xx + res.intercept for xx in x]
-        
-        plt.plot(x, y_fit, color = linecolor, linewidth = 1)
-        return y_fit
-
 
 
 # calls get_result_by_batch to process data.
@@ -873,121 +989,3 @@ def mass_calibration_curve(paths: str|list, preview_data: bool = False, fig1: st
         plt.savefig(fig2)
     plt.show()
     plt.clf()
-
-
-"""
-GENERIC processing functions
-"""
-# filter a list with z-values, IQR and percentile limit.
-# if none of these are specified, no values are filtered.
-# return -> indices: list. indices of outlier items.
-def get_outlier_indices(x: list, z: float = None, iqr_factor: float = None, percentile_limit: float = 0) -> list:
-    if (percentile_limit >= 100
-        or (z and z < 0)
-        or (iqr_factor and iqr_factor < 0)):
-        raise ValueError(':get_outlier_indices: Invalid statistical parameters supplied.')
-
-    # can't do statistics
-    if len(x) < 2:
-        return []
-
-    indices = list()
-    mean = st.mean(x)
-    stdev = st.stdev(x)
-    q3, q1 = np.percentile(x, [75, 25])
-    iqr = q3 - q1
-    percentile_l, percentile_r = np.percentile(x, [0 + percentile_limit, 100 - percentile_limit])
-    
-    for i in range(len(x)):
-        val = x[i]
-        # only need to satisfy one of these criteria to be removed.
-        if z is not None and stdev and abs(val - mean) / stdev > z:
-            indices.append(i)
-        elif (iqr_factor is not None
-            and (val > q3 + iqr_factor * iqr or val < q1 - iqr_factor * iqr)):
-            indices.append(i)
-        elif val > percentile_r or val < percentile_l:
-            indices.append(i)
-        
-    return indices 
-
-
-# remove elements at positions {indices} in list {x}
-# return -> filtered list of x
-def remove_by_indices(x: list, indices: list) -> list:
-    return [x[i] for i in range(len(x)) if i not in indices]
-
-
-# axes: list, or potentially list of lists, corresponding to many axes of the same data set.
-# no_outlier: a list of indices where we don't attempt to find outliers.
-#             Needed for independent variables.
-# **kwargs: filtering options, see arguments of get_outlier_indices
-# return -> list: modified axes (original 1d/2d form preserved)
-def remove_outliers(axes: list, no_outlier: int|list = [], **kwargs) -> list:
-    # create shallow copy to avoid altering original
-    axes = [el for el in axes]
-
-    # treat single list case first
-    if (len(axes) == 0 or isinstance(axes[0], Number)):
-        outlier_indices = get_outlier_indices(axes, **kwargs)
-        return remove_by_indices(axes, outlier_indices)
-    
-    # sanity check: must be at least uniform 2D list.
-    l = len(axes[0])
-    for axis in axes:
-        if l != len(axis):
-            raise IndexError('(E) remove_outliers: Lists of different lengths supplied.')
-
-    if type(no_outlier) is int:
-        no_outlier = [no_outlier]
-
-    outlier_indices = set()
-    # find all the outlier indices first
-    for i in range(len(axes)):
-        if i in no_outlier:
-            continue
-        outlier_indices = outlier_indices | set(get_outlier_indices(axes[i], **kwargs))
-
-    # remove corresponding elements in each axis.
-    for i in range(len(axes)):
-        axes[i] = remove_by_indices(axes[i], outlier_indices)
-
-    return axes
-
-
-# return if {val} is in [l, r).
-# if either l or r is None, that side of the limit is ignored.
-# return -> True if in range, False otherwise.
-def in_range(val: float, l: float = None, r: float = None) -> bool:
-    return (l is None or l < val) and (r is None or val < r)
-
-
-# get a list of the paths to all the valid files (json) in a folder
-# paths: the folder(s) to look at, non-recursive.
-# return -> list of paths to valid files.
-def get_data_files(paths: str|list) -> list:
-    data_files = list() 
-    if type(paths) is str:
-        paths = [paths]
-
-    for path in paths:
-        data_files.extend(
-                [os.path.join(path, name) 
-                for name in os.listdir(path) 
-                if os.path.isfile(os.path.join(path, name))
-                and name.split('.')[-1] == 'json']
-                )
-    return data_files
-
-
-# return a list of Data objects loaded from json files in {paths}.
-def get_data_list(paths: str|list) -> list:
-    data_list = list()
-    data_files = get_data_files(paths)
-    for name in data_files:
-        data = Data()
-        data.load(name)
-        data_list.append(data)
-
-    return data_list
-
