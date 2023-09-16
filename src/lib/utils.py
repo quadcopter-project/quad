@@ -82,9 +82,14 @@ class Frame:
         return mass_vec
 
     # NOTE: HARDCODING HERE.
-    # return -> reading of first (there's only one) accelerometer [x, y, z].
+    # return -> reading of the first (there's only one) accelerometer [x, y, z].
     def get_accel_vec(self) -> list:
         return self.accel[0]
+
+    # NOTE: HARDCODING HERE.
+    # return -> reading of the first (there's only one) ultrasound distance sensor.
+    def get_dist(self) -> float:
+        return self.dist[0]
 
 
 # stores all data.
@@ -133,36 +138,30 @@ class Data:
     
 
     # GET functions (public)
-    # important for `generic` functions in the new Plotter.
+    # returns a generic get function, which attempts to provide a list
+    # of that variable in the different frames
+    def __getattr__(self, attr: str):
+        # intended to sub for generic get_* functions only
+        if '_' not in attr or attr.split('_')[0] != 'get':
+            raise AttributeError('Attribute does not exist.')
+
+        attr_type, var_name = attr.split('_', 1)
+        dummy_frame = Frame()
+
+        if not (hasattr(dummy_frame, attr) or hasattr(dummy_frame, var_name)):
+            raise AttributeError('Relevant get_* function or variable not found in Frame.')
+
+        def get_func() -> list:
+            # test for the get function
+            if hasattr(dummy_frame, attr):
+                return [getattr(frame, attr)() for frame in self.frames] 
+
+            return [getattr(frame, var_name) for frame in self.frames]
+
+        return get_func
+
     def get_date(self) -> str:
         return datetime.fromtimestamp(self.timestamp).strftime('%d/%m/%Y %H:%M:%S')
-
-    def get_t(self) -> list:
-        return [frame.t for frame in self.frames]
-
-    def get_peak_freq(self) -> list:
-        return [frame.peak_freq for frame in self.frames]
-
-    def get_mass(self) -> list:
-        return [frame.mass for frame in self.frames]
-
-    # only works as intended on the 3-cell setup.
-    def get_total_mass(self) -> list:
-        return [frame.get_total_mass() for frame in self.frames]
-
-    def get_mean_rpm(self) -> list:
-        return [frame.get_mean_rpm() for frame in self.frames]
-
-    def get_mass_vec(self) -> list:
-        return [frame.get_mass_vec() for frame in self.frames]
-
-    def get_accel_vec(self) -> list:
-        return [frame.get_accel_vec() for frame in self.frames]
-
-    # NOTE: HARDCODING HERE.
-    # return -> reading from first distance (ultrasound) sensor (there's only one).
-    def get_dist(self) -> list:
-        return [frame.dist[0] for frame in self.frames]
 
     # return -> (mean, stdev) for total mass over time.
     # if only one data point is provided, stdev is set to 0.
@@ -509,7 +508,7 @@ class Numerical:
     # fl, fr: range of frequencies to do fft [fl, fr].
     # return -> freq's and the corresponding amplitudes at the freqs.
     @staticmethod
-    def fft(audio: list, dt: float, fl:float=0, fr:float=20000) -> tuple[list, list]:
+    def fft(audio: list, dt: float, fl: float = 0, fr: float = 20000) -> tuple[list, list]:
         freq = np.fft.fftfreq(len(audio), d = dt).tolist()
         ampl = np.abs(np.fft.fft(audio)).tolist()
         # left and right indices between fl, ft
