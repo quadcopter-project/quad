@@ -10,7 +10,6 @@ Variable names
 - fl, fr: the range of frequencies to survey, [fl, fr]. If None then no limit.
 """
 
-
 import os, scipy
 import matplotlib.pyplot as plt
 import numpy as np
@@ -48,7 +47,6 @@ def errorbar_plot(x: list, y: list, xerr: list = None, yerr: list = None, linreg
         plt.plot(x, y_fit, color = linecolor, linewidth = 1)
         return y_fit
 
-
 # filter a list with z-values, IQR and percentile limit.
 # if none of these are specified, no values are filtered.
 # return -> indices: list. indices of outlier items.
@@ -82,12 +80,10 @@ def get_outlier_indices(x: list, z: float = None, iqr_factor: float = None, perc
         
     return indices 
 
-
 # remove elements at positions {indices} in list {x}
 # return -> filtered list of x
 def remove_by_indices(x: list, indices: list) -> list:
     return [x[i] for i in range(len(x)) if i not in indices]
-
 
 # axes: list, or potentially list of lists, corresponding to many axes of the same data set.
 # no_outlier: a list of indices where we don't attempt to find outliers.
@@ -125,13 +121,11 @@ def remove_outliers(axes: list, no_outlier: int|list = [], **kwargs) -> list:
 
     return axes
 
-
 # return if {val} is in [l, r).
 # if either l or r is None, that side of the limit is ignored.
 # return -> True if in range, False otherwise.
 def in_range(val: float, l: float = None, r: float = None) -> bool:
     return (l is None or l < val) and (r is None or val < r)
-
 
 # get a list of the paths to all the valid files (json) in a folder
 # paths: the folder(s) to look at, non-recursive.
@@ -150,7 +144,6 @@ def get_data_files(paths: str|list) -> list:
                 )
     return data_files
 
-
 # return a list of Data objects loaded from json files in {paths}.
 def get_data_list(paths: str|list) -> list:
     data_list = list()
@@ -161,8 +154,6 @@ def get_data_list(paths: str|list) -> list:
         data_list.append(data)
 
     return data_list
-
-
 """
 SNAPTAIN processing functions 
 """
@@ -194,7 +185,6 @@ def w2_normalisation(data: Data, fl:float = None, fr:float = None) -> tuple[list
                                        percentile_limit = 0)
     return norm_t, norm_val
 
-
 # plot w2_normalisation result for a single Data dump.
 def w2_norm_plot(data: Data, fig: str = None, fl = None, fr = None):
     plt.ioff()
@@ -219,7 +209,6 @@ def w2_norm_plot(data: Data, fig: str = None, fl = None, fr = None):
 
     # exit cleanly
     plt.clf()
-
 
 # process all Data files in a path, for each find a mean CL value,
 # then plot that against height.
@@ -253,7 +242,6 @@ def w2_norm_height_plot(data_list: list, fig: str = None, fl = None, fr = None):
         plt.savefig(fig)
     plt.show()
     plt.clf()
-    
 
 # bin lift values by frequency ranges.
 # endpoints: endpoints for the bin intervals. 
@@ -283,7 +271,6 @@ def bin_by_w(data: Data, endpoints: list) -> list:
             break
 
     return bins
-
 
 # bin the lift values by w and for each bin, plot a scatter plot of lift versus distance.
 # different bins distinguished by colour.
@@ -352,7 +339,6 @@ def bin_by_w_plot(data_list: list, endpoints: list, fig: str = None):
 
     plt.clf()
 
-
 """
 BETAFLIGHT processing functions
 """
@@ -416,7 +402,6 @@ def get_result_by_batch(data_list: list, heights: Number|list = None, rpm_range:
     result_by_batch = dict(sorted(result_by_batch.items()))
 
     return result_by_batch
-
 
 # calculates parameters for plotting a single line of lift against rpm
 # result_by_rpm: dict(target_rpm -> frames)
@@ -489,7 +474,6 @@ def lift_rpm2_plot(data_list: list, avg: bool = True, fig: str = None, **kwargs)
     plt.show()
     plt.clf()
 
-
 # plot CL, calculated purely from results at each w, against w, for all heights by default.
 def cl_w_plot(data_list: list, avg: bool = True, fig: str = None, **kwargs):
     from math import sqrt
@@ -522,7 +506,6 @@ def cl_w_plot(data_list: list, avg: bool = True, fig: str = None, **kwargs):
 
     plt.show()
     plt.clf()
-
 
 # plot a graph of CL (coefficient of lift) against height.
 # avg = True: take time-average of mean_rpm and total_mass.
@@ -629,7 +612,7 @@ def cl_height_plot_multiple(data_lists: list,data_choice:list = [0,2], avg: bool
         result_by_batches=(get_result_by_batch(data_lists[i], **kwargs))
 
         # cl: coefficient of lift
-        x_cl, y_cl, yerr_cl = ([] for i in range(3))
+        x_cl, y_cl, yerr_cl = ([] for j in range(3))
 
         for (height, timestamp), result_by_rpm in result_by_batches.items():
             x, y, xerr, yerr = lift_rpm(result_by_rpm, avg)
@@ -637,7 +620,10 @@ def cl_height_plot_multiple(data_lists: list,data_choice:list = [0,2], avg: bool
 
             res = scipy.stats.linregress(x, y)
             x_cl.append(height)
-            y_cl.append(res.slope)
+            if (i==1):
+                y_cl.append(res.slope + 2.0713488097364073e-07)
+            else:
+                y_cl.append(res.slope)
             yerr_cl.append(res.stderr)
         # store multiple sets of data for different drone size
         multi_data.append([x_cl,y_cl,yerr_cl])
@@ -686,7 +672,10 @@ def cl_height_plot_multiple(data_lists: list,data_choice:list = [0,2], avg: bool
 
         if (model == 1):
             fit_init_1 = [[1e-6, 40, 100],
-                          [1e-6, 40, 100]]
+                          [1e-6, 40, 100],
+                          [1e-6, 40, 100],
+                          [1e-6, 40, 100],
+                          [1e-6, 40, 100],]
 
             exponents_1 = [[-1, -1],
                            [-1, -1]]
@@ -870,21 +859,34 @@ def rpm_height_3d_plot(data_list: list, avg:bool = True, fig: str = None, **kwar
 
 # extract data as a list for further processing
 def extractor(data_lists: list,avg:bool = False,**kwargs):
+    import csv
 
     multi_data = []
-    prop_spacings = [16, 24, 32]
-    prop_radii = [5.08, 5.08, 5.08]
+    prop_spacings = [16, 24, 32, 24, 12]
+    prop_radii = [5.08, 5.08, 5.08, 5.08, 5.08]
+    test_run = [1,1,1,2,1]
+    # note that the second run of the 24cm drone is the correction run
 
     for i in range(len(data_lists)):
         result_by_batches=(get_result_by_batch(data_lists[i], **kwargs))
         for (height, timestamp), result_by_rpm in result_by_batches.items():
             x,y,xerr,yerr = lift_rpm(result_by_rpm, avg)
             for j in range(len(x)):
-                multi_data.append([x[j],y[j],height,prop_spacings[i],prop_radii[i]])
+                # each list contains in order:
+                # rpm in rpm, lift in grams, height in cm, prop spacing in cm, prop radii in cm, test run number
+                # more can be added
+                multi_data.append([x[j],y[j],height,prop_spacings[i],prop_radii[i],test_run[i]])
+
+    filename = '../raw/bf2/all_data.csv'
+    with open(filename, 'w', newline='') as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerows(multi_data)
+
     print(len(multi_data))
     return multi_data
 
 # interpolate and find the offset between the two runs of the same parameters
+# for the two runs of the 24cm drone, the cl in g/rpm^2 is calculated to be less by 2.0713488097364073e-07
 def same_parameter_comparison(data_lists: list,**kwargs):
 
     # assuming 0 has more data than 1
@@ -920,6 +922,7 @@ def same_parameter_comparison(data_lists: list,**kwargs):
     plt.xlabel('height / cm')
     plt.ylabel('diff in CL / (g s^2)')
     plt.show()
+    print(np.mean(diff[1]))
 
 """
 LOAD CELL processing functions
