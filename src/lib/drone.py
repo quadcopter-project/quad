@@ -345,7 +345,7 @@ def test_rpm():
 
 if __name__ == '__main__':
     print('LAUNCHED AS MAIN - COMMENCING TESTING...')
-    input('Confirm start: ')
+    input('Confirm start (MOTORS WILL SPIN): ')
     bf = Drone()
     test_switch()
     bf.set_arming(True)
