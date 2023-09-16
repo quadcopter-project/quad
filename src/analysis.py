@@ -65,7 +65,7 @@ def gen_cl_height_multiple_plot(paths: str|list):
     data_lists = []
     for path in paths:
         data_lists.append(processor.get_data_list(path))
-    processor.cl_height_plot_multiple(data_lists,data_choice=[2,4], fig=fig, fit = False,avg=True,model=2)
+    processor.cl_height_plot_multiple(data_lists,data_choice=[0,1,2,4], fig=fig, fit =False,avg=True,model=1)
 
 def test_data_extractor(paths: str|list):
     data_lists = []
@@ -93,6 +93,6 @@ if __name__ == '__main__':
     # gen_ln_cl_ln_height_plot(path)
     # gen_cl_height_plot(path)
     # gen_lift_rpm2_plot(path)
-    gen_cl_height_multiple_plot(allpath)
-    # test_data_extractor(path)
+    # gen_cl_height_multiple_plot(allpath)
+    test_data_extractor(allpath)
     # test_comparison(['../raw/bf2/240mm_prop_spacing_4inch_prop','../raw/bf2/240mm_prop_spacing_4inch_prop_retest'])
