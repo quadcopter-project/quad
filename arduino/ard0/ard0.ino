@@ -14,17 +14,17 @@ AccelStepper motor[NUM_MOTOR];
 
 // MOTOR algorithm parameters
 // level parameters
-const int STARTING_DOWNWARD_STEP = 100;
-const int MIN_DOWNWARD_STEP = 10;
-const double STEP_DIV_FACTOR = 2.5; // using funny numbers might help with the "granular" nature of dividing steps by 2
-const double ACCEL_TOLERANCE = 0.15; // translates to about 0.9 degs
-// setHeight parameters
-const double DIST_TOLERANCE = 0.75;
-const double QUICK_ADJUST_LIMIT = 4;
-const double QUICK_ADJUST_UP_STEPS = 50;
+const int STARTING_DOWNWARD_STEP = 100; // stepsize for initial levelling attemps
+const int MIN_DOWNWARD_STEP = 10; // smallest stepsize for levelling attempts
+const double STEP_DIV_FACTOR = 2.5; // factor to divide current stepsize by to get stepsize for finer levelling
+const double ACCEL_TOLERANCE = 0.15; // ..in the horizontal component. translates to about 0.9 degs
+// _setHeight parameters
+const double DIST_TOLERANCE = 0.75; // allowed deviation of measured height to target height
+const double QUICK_ADJUST_LIMIT = 4; // min distance between measured & target before fine adjustment is used
+const double QUICK_ADJUST_UP_STEPS = 50; // stepsize for quick adjustment going upwards
 const double QUICK_ADJUST_DOWN_STEPS = -50;
 const double FINE_ADJUST_UP_STEPS = 10;
-const double FINE_ADJUST_DOWN_STEPS = -10;
+const double FINE_ADJUST_DOWN_STEPS = -10; // stepsize for fine adjustment going downwards
 
 // HC-SR04
 const int TRIG_PIN = 8;
@@ -35,17 +35,20 @@ const int ECHO_PIN = 9;
 #include "Adafruit_MMA8451.h"
 #include <Adafruit_Sensor.h>
 Adafruit_MMA8451 mma = Adafruit_MMA8451();
-const int ACCEL_MEAN_REPEATS = 20;  // average out oscillations.
-const int ACCEL_DELAY = 3000;    // so that system can settle down.
+const int ACCEL_MEAN_REPEATS = 20;  // average out oscillations
+const int ACCEL_DELAY = 3000;    // so that system can settle down
 
 // Utitilies for reading and parsing Serial input
 const int MAX_STR_LEN = 50;
-char str[MAX_STR_LEN + 5];
-char substr[MAX_STR_LEN + 5];
-int len = 0;
-int sublen = 0;
-int pos = 0;
+char str[MAX_STR_LEN + 5]; // readline() stores the line here
+char substr[MAX_STR_LEN + 5]; // next_substr() stores its result here
+int len = 0; // length of str[]
+int sublen = 0; // length of substr[]
+int pos = 0; // position on str[], used in next_substr() to determine where to begin again
 
+
+// I/O FUNCTIONS
+// read a line from Serial into str[]. Use of the String class, or default read methods is avoided.
 void readline() {
     len = sublen = pos = 0;
     char ch = Serial.read();
@@ -56,6 +59,7 @@ void readline() {
     str[len] = '\0';
 }
 
+// obtain the next substring in str[], using space as separator, and save it to substr[]
 void next_substr() {
     sublen = 0;
     while (pos < len) {
@@ -68,6 +72,7 @@ void next_substr() {
     substr[sublen] = '\0';
 }
 
+// attempt a conversion of substr[] to an int value.
 int substr_to_int() {
     int x = 0, val = 0, sgn = 1;
     if (substr[0] == '-') {
@@ -80,6 +85,7 @@ int substr_to_int() {
     return sgn * val;
 }
 
+// attempt conversion of substr[] to a double value.
 double substr_to_double() {
     double val = 0;
     int x = 0, sgn = 1, dec_point = sublen;
@@ -100,8 +106,51 @@ double substr_to_double() {
     return val * sgn;
 }
 
+inline void flushInput() { while (Serial.available()) Serial.read(); }
 
-// Ultrasound HC-SR04 functions
+// report current reading & status (isOperating).
+inline void report() {
+    // ultrasound
+    double distance = getDistance();
+    
+    // accelerometer
+    double accel[3];
+    getAccel(accel);
+
+    // motor
+    bool moving[NUM_MOTOR];
+    for (int i = 0; i < NUM_MOTOR; i++) {
+        moving[i] = motor[i].isRunning();
+    }
+
+    // formatted output
+    Serial.print("DAT {");
+    
+    Serial.print("\"motor\": [");
+    Serial.print(moving[0]);
+    for (int i = 1; i < NUM_MOTOR; i++) {
+        Serial.print(", ");
+        Serial.print(moving[i]);
+    }
+
+    Serial.print("], \"accel\": [[");
+    Serial.print(accel[0]);
+    for (int i = 1; i < 3; i++) {
+        Serial.print(", ");
+        Serial.print(accel[i], 3);
+    }
+
+    Serial.print("]], \"dist\": [");
+    Serial.print(distance);
+
+    Serial.print("], \"operating\": [");
+    Serial.print(isOperating);
+    Serial.println("]}");
+}
+
+
+// ULTRASOUND HC-SR04 FUNCTIONS
+// sensor initialization
 inline void initDistance() {
     pinMode(TRIG_PIN, OUTPUT);
     pinMode(ECHO_PIN, INPUT);
@@ -121,7 +170,8 @@ inline double getDistance() {
 }
 
 
-// Accelerometer MMA8451 functions
+// ACCELEROMETER MMA8451 FUNCTIONS
+// obtain and unpack acceleration from library, then store to accel[], the passed in array.
 inline void getAccel(double accel[]) {
     mma.read();
     sensors_event_t event;
@@ -131,6 +181,7 @@ inline void getAccel(double accel[]) {
     accel[2] = event.acceleration.z;
 }
 
+// obtain averaged acceleration by parameters specified at the top then store to array passed.
 inline void getMeanAccel(double accel[]) {
     delay(ACCEL_DELAY);
     accel[0] = accel[1] = accel[2] = 0;
@@ -147,7 +198,8 @@ inline void getMeanAccel(double accel[]) {
 }
 
 
-// motor functions
+// MOTOR FUNCTIONS
+// most of these are but wrappers around underlying AccelStepper methods, acting on all motors at once.
 inline void stop() { for (int i = 0; i < NUM_MOTOR; i++) motor[i].stop(); }
 
 inline void run() { for (int i = 0; i < NUM_MOTOR; i++) motor[i].run(); }
@@ -166,6 +218,7 @@ inline void runSpeed() { for (int i = 0; i < NUM_MOTOR; i++) motor[i].runSpeed()
 
 inline void move(int steps) { for (int i = 0; i < NUM_MOTOR; i++) motor[i].move(steps); }
 
+// Have the motors run and block the main thread while doing so until motors stop.
 inline void blockedRun() {
     bool wasOperating = isOperating;
     isOperating = true;
@@ -228,6 +281,24 @@ void _setHeight(double lim) {
     report();
 }
 
+/*
+Level by opportunistically lowering one of the three motors while raising the
+other two.  
+
+The lowering is attempted on each motor. If as a result the levelling is worse,
+then revert.  
+
+If at the same stepsize, all three motors fail to improve the result, the
+stepsize is decreased, and the same procedure repeated, until a lower limit is
+hit. When that happens a random motor is given a random "kick", and the whole
+procedure repeated.
+
+"Level of levelness" is measured by the horizontal component of the averaged
+accelerometer reading.
+
+BLOCKING: during this process the arduino refuses any new calls, but keeps
+reporting data to the host.
+*/
 void level() {
     bool wasOperating = isOperating;
     isOperating = true;
@@ -254,7 +325,8 @@ void level() {
             xy1 = sq(accel[0]) + sq(accel[1]);
 
             while (xy1 <= xy) {
-                // only require this while statement to be executed once to show we still have space for optimisation at larger step.
+                // only require this while statement to be executed once to show
+                // we still have space for optimisation at larger step.
                 success_flag = true;
                 xy = xy1;
 
@@ -292,7 +364,8 @@ void level() {
     report();
 }
 
-// BLOCKING: during this process the arduino refuses any new calls, but keeps reporting data to the host.
+// set the height to >= lim, then attempt levelling.
+// Repeat this procedure until all tolerance constraints are met.
 void setHeight(double lim) {
     bool wasOperating = isOperating;
     isOperating = true;
@@ -315,47 +388,6 @@ void setHeight(double lim) {
     flushInput();
     isOperating = false | wasOperating;
     report();
-}
-
-inline void flushInput() { while (Serial.available()) Serial.read(); }
-
-inline void report() {
-    // ultrasound
-    double distance = getDistance();
-    
-    // accelerometer
-    double accel[3];
-    getAccel(accel);
-
-    // motor
-    bool moving[NUM_MOTOR];
-    for (int i = 0; i < NUM_MOTOR; i++) {
-        moving[i] = motor[i].isRunning();
-    }
-
-    // formatted output
-    Serial.print("DAT {");
-    
-    Serial.print("\"motor\": [");
-    Serial.print(moving[0]);
-    for (int i = 1; i < NUM_MOTOR; i++) {
-        Serial.print(", ");
-        Serial.print(moving[i]);
-    }
-
-    Serial.print("], \"accel\": [[");
-    Serial.print(accel[0]);
-    for (int i = 1; i < 3; i++) {
-        Serial.print(", ");
-        Serial.print(accel[i], 3);
-    }
-
-    Serial.print("]], \"dist\": [");
-    Serial.print(distance);
-
-    Serial.print("], \"operating\": [");
-    Serial.print(isOperating);
-    Serial.println("]}");
 }
 
 
@@ -386,6 +418,7 @@ void loop() {
         readline();
         next_substr();
 
+        // the "protocol"
         if (strcmp(substr, "IDEN") == 0) {
             Serial.print("IDEN "); Serial.println(DEV_ID);
         } else if (strcmp(substr, "MOVE") == 0) {
@@ -415,6 +448,7 @@ void loop() {
     report();
     delay(200);
 
+    // attempting reconnection if disconnected
     if(!Serial) {
         Serial.end();
         delay(200);
