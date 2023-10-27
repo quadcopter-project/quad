@@ -13,8 +13,8 @@ HX711 scales[NUM_CELLS];
 
 // Utitilies for reading and parsing Serial input
 const int MAX_STR_LEN = 50;
-char str[MAX_STR_LEN];
-char substr[MAX_STR_LEN];
+char str[MAX_STR_LEN + 5];
+char substr[MAX_STR_LEN + 5];
 int len = 0;
 int sublen = 0;
 int pos = 0;
@@ -22,24 +22,23 @@ int pos = 0;
 void readline() {
     len = sublen = pos = 0;
     char ch = Serial.read();
-    while (ch != '\n') {
+    while (ch != '\n' && len < MAX_STR_LEN) {
         str[len++] = ch;
         ch = Serial.read();
     }
     str[len] = '\0';
 }
 
-void next_substr(char* _substr) {
+void next_substr() {
     sublen = 0;
     while (pos < len) {
         if (str[pos] == ' ') {
             pos++;
             break;
         }
-        _substr[sublen] = substr[sublen] = str[pos++];
-        sublen++;
+        substr[sublen++] = str[pos++];
     }
-    _substr[sublen] = substr[sublen] = '\0';
+    substr[sublen] = '\0';
 }
 
 int substr_to_int() {
@@ -130,8 +129,7 @@ void setup() {
 void loop() {
     if (Serial.available()) {
         readline();
-        char substr[20];
-        next_substr(substr);
+        next_substr();
 
         if (strcmp(substr, "IDEN") == 0) {
             Serial.print("CALIB");
