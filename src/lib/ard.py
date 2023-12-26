@@ -70,7 +70,7 @@ class ArdManager:
         for port in self.ports:
             print(f'ArdManager::__init__: initialising {port.description} on {port.device}.')
             ard = Arduino(port.device, baud)
-            self.arduinos[ard.dev_id] = ard 
+            self.arduinos[ard.dev_id] = ard
 
         self.arduinos = dict(sorted(self.arduinos.items()))
 
@@ -103,7 +103,7 @@ class ArdManager:
         self.mapping = mapping
 
     # interactively adjust component mapping: supports motors and cells.
-    # the final mapping is written back to self.mapping. 
+    # the final mapping is written back to self.mapping.
     def customise_mapping(self):
         old_mapping = self.mapping
         new_mapping = self.ArdMapping()
@@ -118,7 +118,7 @@ class ArdManager:
         print('ArdManager::customise_mapping: Remapping motors.')
         max_id = len(old_mapping.motor)
         for i in range(max_id):
-            dev_id, motor_id = old_mapping.motor[i] 
+            dev_id, motor_id = old_mapping.motor[i]
             new_id = ''
             while True:
                 input(f'Motor {i} will now move 90 degrees. Confirm: ')
@@ -171,7 +171,7 @@ class ArdManager:
         dev_reading = {dev_id: arduino.get_reading() for dev_id, arduino in self.arduinos.items()}
 
         for comp, comp_map in asdict(self.mapping).items():
-            comp_reading = getattr(reading, comp) 
+            comp_reading = getattr(reading, comp)
             # put readings in according to id order
             for dev_id, comp_id in comp_map:
                 dev_comp_reading = getattr(dev_reading[dev_id], comp)
@@ -219,7 +219,7 @@ class ArdManager:
         if block:
             self.op_block()
 
-    # wrapper for moving individual motor. 
+    # wrapper for moving individual motor.
     # target: movement in STEPS.
     def move_motor(self, motor_id: int, target: float, block = True):
         motor_num = len(self.mapping.motor)
@@ -251,7 +251,7 @@ class ArdManager:
     def dump(self, name: str):
         if self.mapping is None:
             raise Exception('(E) ArdManager::dump: no mapping defined.')
-        self.mapping.dump(name) 
+        self.mapping.dump(name)
 
     # load a self.mapping json file from disk.
     # name: location of file
@@ -277,9 +277,35 @@ class Arduino:
     # reset is not necessary, but could be just a precaution to take.
     # NOTE: if not reset, the LOAD CELLS WILL REMAIN UNTARED.
     def __init__(self, port:str, baud:int = 230400, reset: bool = True):
-        self.port = port
-        self.baud = baud
-        self.open(port, baud = baud) 
+        self.connect(port, baud, reset)
+
+    # connect to Arduino with specified parameters, closing existing connection.
+    # if a previous conn exists and no new parameters are provided,
+    # re-connect with the same settings.
+    def connect(self, port:str = None, baud:int = None, reset: bool = True):
+        if port is None and baud is None:
+            if self.port is not None and self.baud is not None:
+                port = self.port
+                baud = self.baud
+
+            # If only one of these is previously set then
+            # it's 100% already messed up.
+            else:
+                raise Exception("(E) Arduino::connect: No prior connection and no port and baud info provided. Unable to connect.")
+
+        elif port is not None and baud is not None:
+            pass
+        
+        # if only one of the two param is None just abort.
+        else:
+            raise Exception("""(E) Arduino::connect: Either supply all connection info or none.
+                            Behaviour with partial information is undefined.""")
+
+        if self.conn:
+            self.close()
+
+        self.open(port, baud = baud)
+
         if reset:
             self.reset()
 
@@ -299,8 +325,11 @@ class Arduino:
         self.conn = True
 
     def close(self):
-        self.dev.close()
         self.conn = False
+        if self.thread is not None:
+            self.thread.join()
+
+        self.dev.close()
 
     def reset(self):
         self.dev.setDTR(False)
@@ -324,7 +353,10 @@ class Arduino:
     # NOTE: as of now it is debatable whether this is faster.
     def readline_worker(self):
         while True:
-            if self.dev is None or not self.dev.is_open:
+            if not self.conn:
+                return
+
+            if self.conn and (self.dev is None or not self.dev.is_open):
                 self.conn = False
                 raise Exception('(E) Arduino::readline_worker: Arduino on {self.port} disconnected.')
 
@@ -353,9 +385,9 @@ class Arduino:
             param = parsed[1:]
             match cmd:
                 case 'CALIB':
-                    self.calib_factor = [float(val) for val in param] 
+                    self.calib_factor = [float(val) for val in param]
                 case 'IDEN':
-                    self.dev_id = int(param[0]) 
+                    self.dev_id = int(param[0])
 
     # return -> operating: bool
     # True: either taring load cells or motors are moving.
@@ -367,7 +399,7 @@ class Arduino:
     def get_reading(self) -> ArdReading:
         parsed = self.line.strip().split(' ', maxsplit = 1)
 
-        cmd = parsed[0] 
+        cmd = parsed[0]
         if cmd != 'DAT':
             print(f'(E) Arduino::get_reading: line is of type {cmd}, cannot parse to output data.')
             print(self.line)
@@ -384,7 +416,7 @@ class Arduino:
 
     # move by number of STEPS
     # target: list specifies all motors;
-    # target: int moves all motors for the same steps. 
+    # target: int moves all motors for the same steps.
     def move(self, target: int|list, block: bool = True):
         motor_num = len(self.get_reading().motor)
         if type(target) is int:
