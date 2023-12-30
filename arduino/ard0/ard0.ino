@@ -35,6 +35,7 @@ const int ECHO_PIN = 9;
 #include "Adafruit_MMA8451.h"
 #include <Adafruit_Sensor.h>
 Adafruit_MMA8451 mma = Adafruit_MMA8451();
+sensors_event_t event;  // accelerometer readout data
 const int ACCEL_MEAN_REPEATS = 20;  // average out oscillations
 const int ACCEL_DELAY = 3000;    // so that system can settle down
 
@@ -124,28 +125,28 @@ inline void report() {
     }
 
     // formatted output
-    Serial.print("DAT {");
+    Serial.print(F("DAT {"));
     
-    Serial.print("\"motor\": [");
+    Serial.print(F("\"motor\": ["));
     Serial.print(moving[0]);
     for (int i = 1; i < NUM_MOTOR; i++) {
-        Serial.print(", ");
+        Serial.print(F(", "));
         Serial.print(moving[i]);
     }
 
-    Serial.print("], \"accel\": [[");
+    Serial.print(F("], \"accel\": [["));
     Serial.print(accel[0]);
     for (int i = 1; i < 3; i++) {
-        Serial.print(", ");
+        Serial.print(F(", "));
         Serial.print(accel[i], 3);
     }
 
-    Serial.print("]], \"dist\": [");
+    Serial.print(F("]], \"dist\": ["));
     Serial.print(distance);
 
-    Serial.print("], \"operating\": [");
+    Serial.print(F("], \"operating\": ["));
     Serial.print(isOperating);
-    Serial.println("]}");
+    Serial.println(F("]}"));
 }
 
 
@@ -174,7 +175,6 @@ inline double getDistance() {
 // obtain and unpack acceleration from library, then store to accel[], the passed in array.
 inline void getAccel(double accel[]) {
     mma.read();
-    sensors_event_t event;
     mma.getEvent(&event);
     accel[0] = event.acceleration.x;
     accel[1] = event.acceleration.y;
@@ -216,7 +216,7 @@ inline void setSpeed(double speed) { for (int i = 0; i < NUM_MOTOR; i++) motor[i
 
 inline void runSpeed() { for (int i = 0; i < NUM_MOTOR; i++) motor[i].runSpeed(); }
 
-inline void move(int steps) { for (int i = 0; i < NUM_MOTOR; i++) motor[i].move(steps); }
+inline void move(long steps) { for (int i = 0; i < NUM_MOTOR; i++) motor[i].move(steps); }
 
 // Have the motors run and block the main thread while doing so until motors stop.
 inline void blockedRun() {
@@ -420,7 +420,7 @@ void loop() {
 
         // the "protocol"
         if (strcmp(substr, "IDEN") == 0) {
-            Serial.print("IDEN "); Serial.println(DEV_ID);
+            Serial.print(F("IDEN ")); Serial.println(DEV_ID);
         } else if (strcmp(substr, "MOVE") == 0) {
             for (int i = 0; i < NUM_MOTOR; i++) {
                 next_substr();

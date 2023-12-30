@@ -100,18 +100,18 @@ inline void report() {
     get_units(mass);
 
     // formatted output
-    Serial.print("DAT {");
+    Serial.print(F("DAT {"));
     
-    Serial.print("\"mass\": [");
+    Serial.print(F("\"mass\": ["));
     Serial.print(mass[0]);
     for (int i = 1; i < NUM_CELLS; i++) {
-        Serial.print(", ");
+        Serial.print(F(", "));
         Serial.print(mass[i]);
     }
 
-    Serial.print("], \"operating\": [");
+    Serial.print(F("], \"operating\": ["));
     Serial.print(isOperating);
-    Serial.println("]}");
+    Serial.println(F("]}"));
 }
 
 
@@ -132,14 +132,14 @@ void loop() {
         next_substr();
 
         if (strcmp(substr, "IDEN") == 0) {
-            Serial.print("CALIB");
+            Serial.print(F("CALIB"));
             for (int i = 0; i < NUM_CELLS; i++) {
-                Serial.print(" ");
+                Serial.print(F(" "));
                 Serial.print(CALIB_FACTOR[i]);
             }
             Serial.println();
 
-            Serial.print("IDEN ");
+            Serial.print(F("IDEN "));
             Serial.println(DEV_ID);
 
         } else if (strcmp(substr, "TARE") == 0) {
