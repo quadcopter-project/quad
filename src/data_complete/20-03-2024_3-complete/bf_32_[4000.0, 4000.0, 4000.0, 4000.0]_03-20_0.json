@@ -1,0 +1,2433 @@
+{
+    "height": 32,
+    "target_rpm": [
+        4000.0,
+        4000.0,
+        4000.0,
+        4000.0
+    ],
+    "timestamp": 1710973287.222988,
+    "platform": "betaflight-2",
+    "description": null,
+    "compact": false,
+    "frames": [
+        {
+            "t": 0.0,
+            "accel": [
+                [
+                    1.76,
+                    -0.302,
+                    11.401
+                ]
+            ],
+            "dist": [
+                32.50473755119573
+            ],
+            "mass": [
+                0.0,
+                10.08,
+                9.96
+            ],
+            "rpm": [
+                3714,
+                3785,
+                3942,
+                3757
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 0.3891317844390869,
+            "accel": [
+                [
+                    3.13,
+                    0.632,
+                    8.025
+                ]
+            ],
+            "dist": [
+                32.50147952810035
+            ],
+            "mass": [
+                0.0,
+                9.83,
+                9.9
+            ],
+            "rpm": [
+                3700,
+                3828,
+                3900,
+                3714
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 0.7664928436279297,
+            "accel": [
+                [
+                    -2.55,
+                    2.686,
+                    9.079
+                ]
+            ],
+            "dist": [
+                32.49276852930149
+            ],
+            "mass": [
+                0.0,
+                10.01,
+                9.98
+            ],
+            "rpm": [
+                3714,
+                3842,
+                4000,
+                3828
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 1.144214391708374,
+            "accel": [
+                [
+                    -1.33,
+                    3.304,
+                    9.117
+                ]
+            ],
+            "dist": [
+                32.500719379346215
+            ],
+            "mass": [
+                0.0,
+                9.89,
+                10.05
+            ],
+            "rpm": [
+                3742,
+                3857,
+                3885,
+                3771
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 1.553184986114502,
+            "accel": [
+                [
+                    -1.85,
+                    1.652,
+                    9.347
+                ]
+            ],
+            "dist": [
+                32.486881941017785
+            ],
+            "mass": [
+                0.0,
+                10.28,
+                9.79
+            ],
+            "rpm": [
+                3714,
+                3771,
+                3842,
+                3800
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 1.9463603496551514,
+            "accel": [
+                [
+                    -0.58,
+                    -2.188,
+                    10.999
+                ]
+            ],
+            "dist": [
+                32.45010803367084
+            ],
+            "mass": [
+                0.0,
+                9.93,
+                9.82
+            ],
+            "rpm": [
+                3714,
+                3714,
+                3800,
+                3757
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 2.3241629600524902,
+            "accel": [
+                [
+                    -0.99,
+                    -0.196,
+                    9.51
+                ]
+            ],
+            "dist": [
+                32.50224629323628
+            ],
+            "mass": [
+                0.0,
+                10.39,
+                9.66
+            ],
+            "rpm": [
+                3757,
+                3842,
+                4000,
+                3771
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 2.6856846809387207,
+            "accel": [
+                [
+                    -1.44,
+                    2.71,
+                    9.17
+                ]
+            ],
+            "dist": [
+                32.50224629323628
+            ],
+            "mass": [
+                0.0,
+                10.38,
+                9.66
+            ],
+            "rpm": [
+                3742,
+                3771,
+                3942,
+                3714
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 3.0794506072998047,
+            "accel": [
+                [
+                    -0.09,
+                    -1.379,
+                    10.118
+                ]
+            ],
+            "dist": [
+                32.503916652518754
+            ],
+            "mass": [
+                0.0,
+                10.08,
+                9.62
+            ],
+            "rpm": [
+                3742,
+                3800,
+                3942,
+                3814
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 3.5040369033813477,
+            "accel": [
+                [
+                    2.29,
+                    0.934,
+                    12.488
+                ]
+            ],
+            "dist": [
+                32.48618427154435
+            ],
+            "mass": [
+                0.0,
+                9.68,
+                9.7
+            ],
+            "rpm": [
+                3728,
+                3757,
+                3928,
+                3842
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 3.9289705753326416,
+            "accel": [
+                [
+                    -0.14,
+                    0.373,
+                    8.37
+                ]
+            ],
+            "dist": [
+                32.5080987731729
+            ],
+            "mass": [
+                0.0,
+                9.56,
+                10.02
+            ],
+            "rpm": [
+                3728,
+                3742,
+                4000,
+                3814
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 4.369520664215088,
+            "accel": [
+                [
+                    1.35,
+                    -0.57,
+                    10.439
+                ]
+            ],
+            "dist": [
+                32.50147952810035
+            ],
+            "mass": [
+                0.0,
+                9.73,
+                10.04
+            ],
+            "rpm": [
+                3757,
+                3800,
+                3985,
+                3771
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 4.762646436691284,
+            "accel": [
+                [
+                    2.99,
+                    0.129,
+                    12.096
+                ]
+            ],
+            "dist": [
+                32.50473755119573
+            ],
+            "mass": [
+                0.0,
+                9.67,
+                9.99
+            ],
+            "rpm": [
+                3800,
+                3800,
+                3914,
+                3800
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 5.1245691776275635,
+            "accel": [
+                [
+                    -1.94,
+                    1.867,
+                    8.404
+                ]
+            ],
+            "dist": [
+                32.46463112503697
+            ],
+            "mass": [
+                0.0,
+                9.68,
+                9.97
+            ],
+            "rpm": [
+                3814,
+                3771,
+                3885,
+                3728
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 5.486142635345459,
+            "accel": [
+                [
+                    -3.11,
+                    3.381,
+                    9.208
+                ]
+            ],
+            "dist": [
+                32.49006211765605
+            ],
+            "mass": [
+                0.0,
+                9.45,
+                9.82
+            ],
+            "rpm": [
+                3728,
+                3800,
+                3928,
+                3771
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 5.879907846450806,
+            "accel": [
+                [
+                    1.3,
+                    -1.973,
+                    8.835
+                ]
+            ],
+            "dist": [
+                32.5080987731729
+            ],
+            "mass": [
+                0.0,
+                9.82,
+                9.84
+            ],
+            "rpm": [
+                3771,
+                3814,
+                3900,
+                3700
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 6.242153882980347,
+            "accel": [
+                [
+                    2.17,
+                    -1.7,
+                    9.802
+                ]
+            ],
+            "dist": [
+                32.500719379346215
+            ],
+            "mass": [
+                0.0,
+                9.67,
+                9.9
+            ],
+            "rpm": [
+                3828,
+                3857,
+                3942,
+                3714
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 6.619762659072876,
+            "accel": [
+                [
+                    3.08,
+                    -1.695,
+                    10.113
+                ]
+            ],
+            "dist": [
+                32.50147952810035
+            ],
+            "mass": [
+                0.0,
+                9.71,
+                9.89
+            ],
+            "rpm": [
+                3757,
+                3814,
+                3900,
+                3828
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 6.965746641159058,
+            "accel": [
+                [
+                    3.91,
+                    -0.273,
+                    11.123
+                ]
+            ],
+            "dist": [
+                32.46529223243543
+            ],
+            "mass": [
+                0.0,
+                9.57,
+                10.05
+            ],
+            "rpm": [
+                3771,
+                3742,
+                3871,
+                3771
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 7.343501806259155,
+            "accel": [
+                [
+                    -0.94,
+                    -0.733,
+                    8.533
+                ]
+            ],
+            "dist": [
+                32.48016620785051
+            ],
+            "mass": [
+                0.0,
+                9.79,
+                9.94
+            ],
+            "rpm": [
+                3728,
+                3814,
+                3857,
+                3800
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 7.712627172470093,
+            "accel": [
+                [
+                    -1.82,
+                    3.266,
+                    9.385
+                ]
+            ],
+            "dist": [
+                32.503916652518754
+            ],
+            "mass": [
+                0.0,
+                9.94,
+                9.79
+            ],
+            "rpm": [
+                3814,
+                3757,
+                4000,
+                3771
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 8.082397699356079,
+            "accel": [
+                [
+                    -3.33,
+                    -1.235,
+                    8.672
+                ]
+            ],
+            "dist": [
+                32.50417050751275
+            ],
+            "mass": [
+                0.0,
+                9.78,
+                9.95
+            ],
+            "rpm": [
+                3728,
+                3800,
+                3985,
+                3800
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 8.474675178527832,
+            "accel": [
+                [
+                    -0.08,
+                    1.25,
+                    9.026
+                ]
+            ],
+            "dist": [
+                32.50147952810035
+            ],
+            "mass": [
+                0.0,
+                9.91,
+                9.88
+            ],
+            "rpm": [
+                3728,
+                3842,
+                3928,
+                3814
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 8.883372068405151,
+            "accel": [
+                [
+                    0.17,
+                    -2.921,
+                    10.396
+                ]
+            ],
+            "dist": [
+                32.483195224186325
+            ],
+            "mass": [
+                0.0,
+                10.13,
+                9.7
+            ],
+            "rpm": [
+                3757,
+                3771,
+                3900,
+                3757
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 9.245518445968628,
+            "accel": [
+                [
+                    -1.84,
+                    0.35,
+                    10.338
+                ]
+            ],
+            "dist": [
+                32.48394892960445
+            ],
+            "mass": [
+                0.0,
+                9.93,
+                9.76
+            ],
+            "rpm": [
+                3742,
+                3785,
+                3842,
+                3800
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 9.622801065444946,
+            "accel": [
+                [
+                    1.49,
+                    1.451,
+                    7.863
+                ]
+            ],
+            "dist": [
+                32.501653771615125
+            ],
+            "mass": [
+                0.0,
+                9.91,
+                9.88
+            ],
+            "rpm": [
+                3714,
+                3814,
+                3885,
+                3828
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 10.046976089477539,
+            "accel": [
+                [
+                    0.92,
+                    -0.536,
+                    11.214
+                ]
+            ],
+            "dist": [
+                32.501653771615125
+            ],
+            "mass": [
+                0.0,
+                9.9,
+                9.9
+            ],
+            "rpm": [
+                3728,
+                3814,
+                3871,
+                3785
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 10.47165584564209,
+            "accel": [
+                [
+                    2.6,
+                    -0.575,
+                    10.089
+                ]
+            ],
+            "dist": [
+                32.49731860371132
+            ],
+            "mass": [
+                0.0,
+                10.08,
+                9.85
+            ],
+            "rpm": [
+                3785,
+                3742,
+                3971,
+                3814
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 10.880559206008911,
+            "accel": [
+                [
+                    -1.36,
+                    -0.105,
+                    10.075
+                ]
+            ],
+            "dist": [
+                32.48902482546606
+            ],
+            "mass": [
+                0.0,
+                10.17,
+                9.85
+            ],
+            "rpm": [
+                3728,
+                3785,
+                3957,
+                3828
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 11.289353609085083,
+            "accel": [
+                [
+                    0.98,
+                    1.47,
+                    10.506
+                ]
+            ],
+            "dist": [
+                32.45740065853588
+            ],
+            "mass": [
+                0.0,
+                10.55,
+                9.92
+            ],
+            "rpm": [
+                3728,
+                3885,
+                3900,
+                3757
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 11.666975498199463,
+            "accel": [
+                [
+                    1.47,
+                    1.796,
+                    11.779
+                ]
+            ],
+            "dist": [
+                32.507238936860574
+            ],
+            "mass": [
+                0.0,
+                10.52,
+                9.7
+            ],
+            "rpm": [
+                3742,
+                3814,
+                3942,
+                3800
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 12.029041051864624,
+            "accel": [
+                [
+                    -1.23,
+                    1.451,
+                    10.424
+                ]
+            ],
+            "dist": [
+                32.500719379346215
+            ],
+            "mass": [
+                0.0,
+                10.13,
+                9.79
+            ],
+            "rpm": [
+                3757,
+                3771,
+                3871,
+                3771
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 12.390174150466919,
+            "accel": [
+                [
+                    -3.26,
+                    -1.456,
+                    9.179
+                ]
+            ],
+            "dist": [
+                32.45693007281753
+            ],
+            "mass": [
+                0.0,
+                10.46,
+                9.72
+            ],
+            "rpm": [
+                3828,
+                3914,
+                3942,
+                3757
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 12.75228476524353,
+            "accel": [
+                [
+                    -1.43,
+                    -1.987,
+                    8.93
+                ]
+            ],
+            "dist": [
+                32.50224629323628
+            ],
+            "mass": [
+                0.0,
+                10.2,
+                9.85
+            ],
+            "rpm": [
+                3785,
+                3814,
+                3928,
+                3771
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 13.129652261734009,
+            "accel": [
+                [
+                    2.15,
+                    1.35,
+                    10.127
+                ]
+            ],
+            "dist": [
+                32.50147952810035
+            ],
+            "mass": [
+                0.0,
+                10.2,
+                9.67
+            ],
+            "rpm": [
+                3828,
+                3771,
+                3857,
+                3757
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 13.506783485412598,
+            "accel": [
+                [
+                    -0.07,
+                    1.374,
+                    9.706
+                ]
+            ],
+            "dist": [
+                32.50147952810035
+            ],
+            "mass": [
+                0.0,
+                10.11,
+                9.78
+            ],
+            "rpm": [
+                3828,
+                3742,
+                3914,
+                3814
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 13.915708065032959,
+            "accel": [
+                [
+                    -2.46,
+                    0.402,
+                    10.118
+                ]
+            ],
+            "dist": [
+                32.50088457438093
+            ],
+            "mass": [
+                0.0,
+                9.95,
+                9.7
+            ],
+            "rpm": [
+                3742,
+                3742,
+                3871,
+                3742
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 14.27857232093811,
+            "accel": [
+                [
+                    -0.15,
+                    0.929,
+                    10.712
+                ]
+            ],
+            "dist": [
+                32.50417050751275
+            ],
+            "mass": [
+                0.0,
+                10.31,
+                9.63
+            ],
+            "rpm": [
+                3714,
+                3800,
+                3971,
+                3828
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 14.640579223632812,
+            "accel": [
+                [
+                    -1.46,
+                    0.464,
+                    11.703
+                ]
+            ],
+            "dist": [
+                32.48991528783766
+            ],
+            "mass": [
+                0.0,
+                9.91,
+                9.68
+            ],
+            "rpm": [
+                3742,
+                3800,
+                3885,
+                3814
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 15.00221562385559,
+            "accel": [
+                [
+                    -0.37,
+                    1.331,
+                    8.246
+                ]
+            ],
+            "dist": [
+                32.486881941017785
+            ],
+            "mass": [
+                0.0,
+                9.57,
+                10.0
+            ],
+            "rpm": [
+                3742,
+                3814,
+                4014,
+                3828
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 15.474727392196655,
+            "accel": [
+                [
+                    0.03,
+                    -1.087,
+                    10.716
+                ]
+            ],
+            "dist": [
+                32.49094963089713
+            ],
+            "mass": [
+                0.0,
+                10.05,
+                9.7
+            ],
+            "rpm": [
+                3742,
+                3842,
+                3957,
+                3728
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 15.883408784866333,
+            "accel": [
+                [
+                    1.55,
+                    -1.508,
+                    10.242
+                ]
+            ],
+            "dist": [
+                32.47786724208364
+            ],
+            "mass": [
+                0.0,
+                9.95,
+                10.05
+            ],
+            "rpm": [
+                3785,
+                3842,
+                3942,
+                3814
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 16.23041081428528,
+            "accel": [
+                [
+                    0.77,
+                    0.359,
+                    10.247
+                ]
+            ],
+            "dist": [
+                32.50147952810035
+            ],
+            "mass": [
+                0.0,
+                9.9,
+                9.87
+            ],
+            "rpm": [
+                3814,
+                3814,
+                3928,
+                3728
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 16.623230934143066,
+            "accel": [
+                [
+                    -1.58,
+                    1.049,
+                    11.205
+                ]
+            ],
+            "dist": [
+                32.50473755119573
+            ],
+            "mass": [
+                0.0,
+                10.07,
+                9.59
+            ],
+            "rpm": [
+                3771,
+                3800,
+                3900,
+                3800
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 16.969857215881348,
+            "accel": [
+                [
+                    -0.69,
+                    0.034,
+                    8.308
+                ]
+            ],
+            "dist": [
+                32.483195224186325
+            ],
+            "mass": [
+                0.0,
+                9.9,
+                9.7
+            ],
+            "rpm": [
+                3842,
+                3800,
+                3900,
+                3714
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 17.362825393676758,
+            "accel": [
+                [
+                    -3.16,
+                    0.737,
+                    11.095
+                ]
+            ],
+            "dist": [
+                32.46464372198336
+            ],
+            "mass": [
+                0.0,
+                9.8,
+                9.76
+            ],
+            "rpm": [
+                3742,
+                3800,
+                3957,
+                3800
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 17.756246089935303,
+            "accel": [
+                [
+                    -2.32,
+                    -0.393,
+                    8.38
+                ]
+            ],
+            "dist": [
+                32.48758467149219
+            ],
+            "mass": [
+                0.0,
+                9.86,
+                9.99
+            ],
+            "rpm": [
+                3742,
+                3800,
+                3971,
+                3771
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 18.14880919456482,
+            "accel": [
+                [
+                    1.48,
+                    0.45,
+                    12.239
+                ]
+            ],
+            "dist": [
+                32.48240380076958
+            ],
+            "mass": [
+                0.0,
+                9.85,
+                9.93
+            ],
+            "rpm": [
+                3814,
+                3814,
+                4014,
+                3742
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 18.49479341506958,
+            "accel": [
+                [
+                    -0.27,
+                    -0.426,
+                    11.138
+                ]
+            ],
+            "dist": [
+                32.48964833324586
+            ],
+            "mass": [
+                0.0,
+                10.0,
+                10.01
+            ],
+            "rpm": [
+                3800,
+                3828,
+                3885,
+                3800
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 18.872449159622192,
+            "accel": [
+                [
+                    1.33,
+                    0.833,
+                    10.951
+                ]
+            ],
+            "dist": [
+                32.5029638047704
+            ],
+            "mass": [
+                0.0,
+                9.55,
+                10.05
+            ],
+            "rpm": [
+                3714,
+                3785,
+                3914,
+                3728
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 19.2364604473114,
+            "accel": [
+                [
+                    1.9,
+                    1.288,
+                    10.702
+                ]
+            ],
+            "dist": [
+                32.49893320703887
+            ],
+            "mass": [
+                0.0,
+                9.53,
+                10.13
+            ],
+            "rpm": [
+                3714,
+                3828,
+                3957,
+                3785
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 19.62734293937683,
+            "accel": [
+                [
+                    -2.01,
+                    0.579,
+                    12.325
+                ]
+            ],
+            "dist": [
+                32.48902482546606
+            ],
+            "mass": [
+                0.0,
+                9.55,
+                9.98
+            ],
+            "rpm": [
+                3757,
+                3885,
+                3885,
+                3785
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 20.115126132965088,
+            "accel": [
+                [
+                    -0.8,
+                    -0.431,
+                    11.875
+                ]
+            ],
+            "dist": [
+                32.49817377603678
+            ],
+            "mass": [
+                0.0,
+                9.38,
+                10.03
+            ],
+            "rpm": [
+                3800,
+                3742,
+                3900,
+                3885
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 20.524731397628784,
+            "accel": [
+                [
+                    -1.57,
+                    -0.67,
+                    9.165
+                ]
+            ],
+            "dist": [
+                32.5021972048335
+            ],
+            "mass": [
+                0.0,
+                9.5,
+                10.07
+            ],
+            "rpm": [
+                3757,
+                3828,
+                3871,
+                3814
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 20.93994164466858,
+            "accel": [
+                [
+                    -3.06,
+                    2.437,
+                    7.91
+                ]
+            ],
+            "dist": [
+                32.50147952810035
+            ],
+            "mass": [
+                0.0,
+                9.51,
+                10.03
+            ],
+            "rpm": [
+                3800,
+                3800,
+                3914,
+                3800
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 21.35840916633606,
+            "accel": [
+                [
+                    2.98,
+                    -0.804,
+                    9.893
+                ]
+            ],
+            "dist": [
+                32.48991528783766
+            ],
+            "mass": [
+                0.0,
+                9.34,
+                9.92
+            ],
+            "rpm": [
+                3814,
+                3814,
+                3900,
+                3814
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 21.719369411468506,
+            "accel": [
+                [
+                    1.58,
+                    -1.958,
+                    9.021
+                ]
+            ],
+            "dist": [
+                32.49094963089713
+            ],
+            "mass": [
+                0.0,
+                9.49,
+                9.85
+            ],
+            "rpm": [
+                3757,
+                3785,
+                3885,
+                3714
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 22.144195795059204,
+            "accel": [
+                [
+                    -1.26,
+                    -0.713,
+                    8.456
+                ]
+            ],
+            "dist": [
+                32.48689632854421
+            ],
+            "mass": [
+                0.0,
+                9.72,
+                9.74
+            ],
+            "rpm": [
+                3800,
+                3800,
+                3842,
+                3828
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 22.505371809005737,
+            "accel": [
+                [
+                    -0.01,
+                    2.016,
+                    11.009
+                ]
+            ],
+            "dist": [
+                32.49416217553404
+            ],
+            "mass": [
+                0.0,
+                10.19,
+                9.56
+            ],
+            "rpm": [
+                3714,
+                3757,
+                3942,
+                3828
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 22.882784843444824,
+            "accel": [
+                [
+                    0.16,
+                    0.752,
+                    10.376
+                ]
+            ],
+            "dist": [
+                32.487667974269314
+            ],
+            "mass": [
+                0.0,
+                9.9,
+                9.82
+            ],
+            "rpm": [
+                3685,
+                3800,
+                3885,
+                3800
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 23.245409727096558,
+            "accel": [
+                [
+                    0.73,
+                    2.131,
+                    10.477
+                ]
+            ],
+            "dist": [
+                32.48912426160234
+            ],
+            "mass": [
+                0.0,
+                9.75,
+                9.66
+            ],
+            "rpm": [
+                3728,
+                3771,
+                3800,
+                3785
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 23.6058189868927,
+            "accel": [
+                [
+                    0.8,
+                    0.69,
+                    10.841
+                ]
+            ],
+            "dist": [
+                32.48394892960445
+            ],
+            "mass": [
+                0.0,
+                10.02,
+                9.51
+            ],
+            "rpm": [
+                3728,
+                3771,
+                3985,
+                3814
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 24.030724048614502,
+            "accel": [
+                [
+                    0.58,
+                    1.456,
+                    9.644
+                ]
+            ],
+            "dist": [
+                32.49964210531511
+            ],
+            "mass": [
+                0.0,
+                9.77,
+                9.62
+            ],
+            "rpm": [
+                3800,
+                3828,
+                3957,
+                3800
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 24.40832757949829,
+            "accel": [
+                [
+                    -0.27,
+                    -0.053,
+                    10.319
+                ]
+            ],
+            "dist": [
+                32.50473755119573
+            ],
+            "mass": [
+                0.0,
+                9.41,
+                9.98
+            ],
+            "rpm": [
+                3771,
+                3814,
+                3885,
+                3828
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 24.786735773086548,
+            "accel": [
+                [
+                    0.11,
+                    1.973,
+                    11.21
+                ]
+            ],
+            "dist": [
+                32.50473755119573
+            ],
+            "mass": [
+                0.0,
+                9.26,
+                10.09
+            ],
+            "rpm": [
+                3757,
+                3728,
+                3814,
+                3771
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 25.21176052093506,
+            "accel": [
+                [
+                    -2.36,
+                    0.388,
+                    9.768
+                ]
+            ],
+            "dist": [
+                32.50224629323628
+            ],
+            "mass": [
+                0.0,
+                9.33,
+                10.17
+            ],
+            "rpm": [
+                3828,
+                3742,
+                3957,
+                3771
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 25.620248317718506,
+            "accel": [
+                [
+                    -2.25,
+                    -0.675,
+                    9.309
+                ]
+            ],
+            "dist": [
+                32.490309161124195
+            ],
+            "mass": [
+                0.0,
+                9.67,
+                9.83
+            ],
+            "rpm": [
+                3742,
+                3771,
+                3942,
+                3814
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 25.982325077056885,
+            "accel": [
+                [
+                    2.1,
+                    -0.603,
+                    8.595
+                ]
+            ],
+            "dist": [
+                32.50473755119573
+            ],
+            "mass": [
+                0.0,
+                9.69,
+                9.8
+            ],
+            "rpm": [
+                3814,
+                3828,
+                3871,
+                3742
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 26.313233375549316,
+            "accel": [
+                [
+                    -1.79,
+                    0.129,
+                    8.452
+                ]
+            ],
+            "dist": [
+                32.48260834167412
+            ],
+            "mass": [
+                0.0,
+                9.45,
+                9.84
+            ],
+            "rpm": [
+                3800,
+                3814,
+                3885,
+                3728
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 26.70606756210327,
+            "accel": [
+                [
+                    0.94,
+                    -0.886,
+                    11.377
+                ]
+            ],
+            "dist": [
+                32.500122057749984
+            ],
+            "mass": [
+                0.0,
+                9.64,
+                9.93
+            ],
+            "rpm": [
+                3728,
+                3757,
+                3871,
+                3757
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 27.083746671676636,
+            "accel": [
+                [
+                    2.11,
+                    -1.575,
+                    8.638
+                ]
+            ],
+            "dist": [
+                32.503916652518754
+            ],
+            "mass": [
+                0.0,
+                9.54,
+                10.17
+            ],
+            "rpm": [
+                3714,
+                3814,
+                3942,
+                3757
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 27.445146560668945,
+            "accel": [
+                [
+                    -0.6,
+                    1.331,
+                    8.835
+                ]
+            ],
+            "dist": [
+                32.500719379346215
+            ],
+            "mass": [
+                0.0,
+                10.18,
+                9.94
+            ],
+            "rpm": [
+                3785,
+                3828,
+                3857,
+                3771
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 27.80749011039734,
+            "accel": [
+                [
+                    1.65,
+                    -2.82,
+                    9.807
+                ]
+            ],
+            "dist": [
+                32.48912426160234
+            ],
+            "mass": [
+                0.0,
+                9.69,
+                9.72
+            ],
+            "rpm": [
+                3785,
+                3757,
+                3842,
+                3828
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 28.310449361801147,
+            "accel": [
+                [
+                    4.24,
+                    -0.115,
+                    10.137
+                ]
+            ],
+            "dist": [
+                32.50147952810035
+            ],
+            "mass": [
+                0.0,
+                9.71,
+                10.07
+            ],
+            "rpm": [
+                3728,
+                3742,
+                3857,
+                3785
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 28.71953058242798,
+            "accel": [
+                [
+                    -3.16,
+                    3.213,
+                    8.873
+                ]
+            ],
+            "dist": [
+                32.50473755119573
+            ],
+            "mass": [
+                0.0,
+                9.84,
+                9.93
+            ],
+            "rpm": [
+                3828,
+                3771,
+                3928,
+                3771
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 29.081586599349976,
+            "accel": [
+                [
+                    -0.93,
+                    -0.019,
+                    8.614
+                ]
+            ],
+            "dist": [
+                32.49894902194238
+            ],
+            "mass": [
+                0.0,
+                9.95,
+                9.62
+            ],
+            "rpm": [
+                3657,
+                3828,
+                3957,
+                3814
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 29.45950436592102,
+            "accel": [
+                [
+                    1.87,
+                    2.064,
+                    9.869
+                ]
+            ],
+            "dist": [
+                32.500410911535624
+            ],
+            "mass": [
+                0.0,
+                9.76,
+                9.82
+            ],
+            "rpm": [
+                3800,
+                3771,
+                3942,
+                3785
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        },
+        {
+            "t": 29.821096897125244,
+            "accel": [
+                [
+                    3.49,
+                    -1.135,
+                    10.491
+                ]
+            ],
+            "dist": [
+                32.50473755119573
+            ],
+            "mass": [
+                0.0,
+                10.24,
+                9.77
+            ],
+            "rpm": [
+                3742,
+                3771,
+                3957,
+                3728
+            ],
+            "audio": null,
+            "dt": null,
+            "fft_freq": null,
+            "fft_ampl": null,
+            "peak_freq": null,
+            "peak_ampl": null,
+            "compact": false
+        }
+    ]
+}
