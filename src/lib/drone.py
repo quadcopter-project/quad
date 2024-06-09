@@ -239,7 +239,8 @@ class Drone:
         if self.rpm_control_on and block:
             rpm = self.get_rpm()
             rpm_diff = [target[i] - rpm[i] for i in range(self.NUM_OF_MOTORS)]
-            rpm_tolerance = [target[i] * 0.05 for i in range(self.NUM_OF_MOTORS)]
+            ###rpm_tolerance = [target[i] * 0.05 for i in range(self.NUM_OF_MOTORS)]
+            rpm_tolerance = [target[i] * 0.1 for i in range(self.NUM_OF_MOTORS)]
 
             while any(abs(diff) > tolerance for diff, tolerance in zip(rpm_diff, rpm_tolerance)):
                 time.sleep(0.5)

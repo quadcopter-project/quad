@@ -7,6 +7,7 @@ const int NUM_CELLS = 3;
 const int LOADCELL_DOUT_PIN_0 = 3;
 const int LOADCELL_SCK_PIN_0 = 2;
 const double CALIB_FACTOR[NUM_CELLS] = {-17165.80, 16631.50, -16851.23};
+//const double CALIB_FACTOR[NUM_CELLS] = {0,0,0};
 
 HX711 scales[NUM_CELLS];
 

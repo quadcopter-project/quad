@@ -43,8 +43,15 @@ def errorbar_plot(x: list, y: list, xerr: list = None, yerr: list = None, linreg
         linecolor = lines[0].get_color()
         res = scipy.stats.linregress(x, y)
         y_fit = [res.slope * xx + res.intercept for xx in x]
-        
+
         plt.plot(x, y_fit, color = linecolor, linewidth = 1)
+
+
+        #display linear fit equation on plot
+        #op='+' if res.intercept>=0 else ''
+        #plt.text(0.95,0.05,f"y={res.slope:.3e}x{op} {res.intercept:.3e}",ha='right', va='bottom', transform=plt.gca().transAxes,fontsize=16)
+        
+
         return y_fit
 
 # filter a list with z-values, IQR and percentile limit.
@@ -204,7 +211,7 @@ def w2_norm_plot(data: Data, fig: str = None, fl = None, fr = None):
     plt.ylabel('(lift / w^2) / g s^2')
     plt.title(f'h = ${data.height}$ cm, mean = ${mean:.3} \\pm {stdev:.1}$')
     if fig:
-        plt.savefig(fig)
+        plt.savefig()
     plt.show()
 
     # exit cleanly
@@ -424,13 +431,16 @@ def lift_rpm(result_by_rpm: dict, avg: bool = True):
         if avg:
             x.append(rpm_mean)
             xerr.append(rpm_stdev)
-            y.append(total_mass_mean)
-            yerr.append(total_mass_stdev)
+            y.append(np.abs(total_mass_mean))
+            yerr.append(np.abs(total_mass_stdev))
+            #y.append(total_mass_mean)
+            #yerr.append(total_mass_stdev)
 
         else:
             for i in range(len(rpm)):
                 x.append(rpm[i])
-                y.append(total_mass[i])
+                y.append(np.abs(total_mass[i]))
+                #y.append(total_mass[i])
                 xerr.append(0)
                 yerr.append(0)
 
@@ -447,6 +457,8 @@ def lift_rpm2_plot(data_list: list, avg: bool = True, fig: str = None, **kwargs)
 
     result_by_batch = get_result_by_batch(data_list, **kwargs)
 
+    fig_, axs = plt.subplots(2, 1, figsize=(8, 10))
+
     # for every series, do:
     for (height, timestamp), result_by_rpm in result_by_batch.items():
         x, y, xerr, yerr = lift_rpm(result_by_rpm, avg)
@@ -456,23 +468,24 @@ def lift_rpm2_plot(data_list: list, avg: bool = True, fig: str = None, **kwargs)
                       linreg = True,
                       label = f'h = {height} cm')
         res = [a-b for a,b in zip(y,y_fit)]
-        plt.subplot(2, 1, 2)
-        plt.plot(x, res, linewidth=1)
+        axs[1].plot(x, res, marker='o',linewidth=1)
 
-    plt.subplot(2,1,1)
-    plt.xlabel('rpm^2 / min^-2')
-    plt.ylabel('lift / g')
-    plt.legend(ncol = 4, loc = 'upper left', fontsize = 5)
-    plt.title('Lift against rpm^2 plot')
-    plt.subplot(2,1,2)
-    plt.xlabel('rpm^2 / min^-2')
-    plt.ylabel('residual / g')
-    plt.title('residual_of_linear_estimate')
+    #axs[0].set_xlabel('rpm^2 / min^-2')
+    axs[0].set_ylabel('lift / g',fontsize=16)
+    axs[0].legend(ncol = 4, loc = 'upper left', fontsize = 5,prop={'size':16})
+    axs[0].set_title(r'Lift against rpm$^2$',fontsize=16)
+    
+    axs[1].set_xlabel(r'rpm$^2$ / min$^{-2}$',fontsize=16)
+    axs[1].set_ylabel('residual / g',fontsize=16)
+    axs[1].set_title('Residual of linear estimate',fontsize=16)
 
     if fig:
         plt.savefig(fig)
+        print(f"Saving to {fig}...")
     plt.show()
     plt.clf()
+
+
 
 # plot CL, calculated purely from results at each w, against w, for all heights by default.
 def cl_w_plot(data_list: list, avg: bool = True, fig: str = None, **kwargs):
@@ -537,6 +550,7 @@ def cl_height_plot(data_list: list, avg: bool = True,fit: bool = True, fig: str 
     # values of height (x) are made non dimensional by dividing by prop_spacing
 
     if (fit == True) :
+        print(1)
         prop_spacing = 16
 
         def ground_effect(x,c1,c2,c3):
@@ -632,7 +646,8 @@ def cl_height_plot_multiple(data_lists: list,data_choice:list = [0,2], avg: bool
     for i in data_choice:
         x_cl, y_cl, yerr_cl = multi_data[i]
         for j in range(len(x_cl)):
-            errorbar_plot(x_cl[j], y_cl[j], yerr=yerr_cl[j], marker = markers[i])
+            errorbar_plot(x_cl[j], y_cl[j], yerr=yerr_cl[j], marker = markers[i])#
+
     plt.subplot(2,1,1)
     plt.title('CL against height')
     plt.xlabel('height / cm')
@@ -877,7 +892,11 @@ def extractor(data_lists: list,avg:bool = False,**kwargs):
                 # more can be added
                 multi_data.append([x[j],y[j],height,prop_spacings[i],prop_radii[i],test_run[i]])
 
-    filename = '../raw/bf2/all_data.csv'
+    ###filename = '../raw/bf2/all_data.csv'
+    filename = 'C:/Users/zc345-elev/Documents/quad/src/temp/all_data.csv'
+
+
+
     with open(filename, 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
         writer.writerows(multi_data)

@@ -50,6 +50,7 @@ class BFLive:
         #self.ardman[0].level()
 
     def level(self):
+        #print("Levelling...")
         self.ardman[0].level()
 
     def start(self, height: float, rpm_queue: list, rec_t: float, transient:float):
@@ -68,9 +69,38 @@ class BFLive:
         self.quad.set_rpm_worker_on(False)
         self.quad.set_arming(False)
 
+
+    def start2(self, height_queue: list, rpm_queue: list, rec_t: float, transient:float):
+        #'Height queue'
+
+        print('BFLive::start: the following parameters are scheduled for testing.')
+        print('height_queue:', *height_queue, sep = ', ')
+        print('rpm_queue:', *rpm_queue, sep = '\n- ')
+        input('BFLive::start: confirm: ')
+
+
+
+        # record is not responsible for arming, this way we can emergency quit and record won't rearm our drone.
+        self.quad.set_arming(True)
+        self.quad.set_rpm_worker_on(True)
+
+        for height in height_queue:
+            print(f"\nSetting height to {height}cm...")
+            live.set_height(height)
+            print(f"Height set to {height}cm.")
+            print(f"Time: {datetime.fromtimestamp(time.time())}")
+
+            for rpm in rpm_queue:
+                self.record(height, rpm, rec_t, transient)
+
+        self.quad.set_rpm_worker_on(False)
+        self.quad.set_arming(False)
+
+
+
     # target_rpm can be of multiple types, set_rpm function deal with this automatically. 
     def record(self, height: float, target_rpm: Number|list, rec_t: float, transient:float):
-        print(f'BFLive::record: preparing for height = {height}, target_rpm = {target_rpm}, rec_t = {rec_t}')
+        print(f'\nBFLive::record: preparing for height = {height}, target_rpm = {target_rpm}, rec_t = {rec_t}')
         if isinstance(target_rpm, Number):
             target_rpm = [target_rpm] * self.quad.NUM_OF_MOTORS
 
@@ -95,6 +125,7 @@ class BFLive:
         print(f'BFLive::record: waiting for transient: {transient}s.')
         time.sleep(transient)
 
+        print(f"Time: {datetime.fromtimestamp(time.time())}")
         print(f'BFLive::record: recording started...')
         t = time.time()
         while time.time() - t < rec_t:
@@ -121,25 +152,40 @@ class BFLive:
         self.quad.set_arming(False)
 
 if __name__ == '__main__':
-    rpm_queue = [2000, 4000] + np.linspace(6000, 12000, 7).tolist()
+    # rpm_queue = [2000, 4000] + np.linspace(6000, 12000, 7).tolist()
+
+    rpm_queue = np.linspace(2000,8000,7).tolist()
+
+    height_queue=np.arange(10,71,1).tolist()
     rec_t = 30
     transient = 5
-    rec_path = '../raw/bf2/120mm_prop_spacing_4inch_prop'
+    # rec_path = '../raw/bf2/120mm_prop_spacing_4inch_prop'
+    rec_path = 'data/20-02-2024'
     live = BFLive(path = rec_path)
     while True:
         print('betaflight-2 testing')
-        choice = input('(m)ove, (l)evel, (h)eight, (s)tart: ')
+        choice = input('(m)ove, (l)evel, (h)eight, (s)tart, (s2)start2: ')
         match choice:
             case 'm':
                 target = input('steps: ').strip().split()
                 target = [int(step) for step in target]
                 live.move_level(target)
+
+                #format of input: "steps: 1000 1000 1000"
+                #negative number: release wire
+
             case 'l':
                 live.level()
             case 'h':
                 live.set_height(float(input('target height / cm: ')))
             case 's':
                 live.start(height = float(input('MEASURE a height / cm: ')),
+                           rpm_queue = rpm_queue,
+                           rec_t = rec_t,
+                           transient = transient)
+            case 's2':
+                #Want to add a 'height_queue'. 
+                live.start2(height_queue = height_queue,
                            rpm_queue = rpm_queue,
                            rec_t = rec_t,
                            transient = transient)
