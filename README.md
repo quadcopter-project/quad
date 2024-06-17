@@ -34,6 +34,17 @@ Use `nvm` to get the correct version of `npm` for `betaflight-configurator`. The
 configurator will also likely need to be recompiled: Follow README instructions
 in `bf-conf/`.
 
+### Docker and computer vision
+To ensure the compatibility of computer vision drivers, a docker container is utilised to create a virtual Ubuntu 22.04 environment. 
+
+Before starting docker, host X server should have authentication for local docker instances, achieve this run:
+
+```bash
+xhost +local:docker
+```
+
+To start using the docker environment, ensure docker daemon is started then run docker_start.sh to go into interactive shell.
+
 ## Use
 
 For usage of the code, the user is referred to the `README` files in the
