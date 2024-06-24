@@ -20,7 +20,7 @@ class ArdReading:
     accel: list = field(default_factory = list) # list of accelerometers; each reading is a vector
     dist: list = field(default_factory = list)
     mass: list = field(default_factory = list)
-    motor: list = field(default_factory = list)using
+    motor: list = field(default_factory = list)
     # a pseudo-list. Arduino will only ever return list of one value indictaing its state.
     # However, this helps keep the code free of special cases
     operating: list = field(default_factory = list)

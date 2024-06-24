@@ -176,21 +176,21 @@ if __name__ == '__main__':
 
     rpm_queue = np.linspace(2000,8000,7).tolist()
 
-    height_queue=np.arange(10,102,2).tolist()
+    height_queue=np.arange(20,102,2).tolist()
     
     rec_t = 30
     transient = 5
     # rec_path = '../raw/bf2/120mm_prop_spacing_4inch_prop'
-    rec_path = 'data/10-04-2024-240mm'
+    rec_path = 'data/24-06-2024-240mm'
 
     tracker_space = viveTracker.TrackerSpace()
     mounted_tracker = tracker_space.trackers[0]
 
-    return("place tracker on calibration mount and press any key")
+    input("place tracker on calibration mount and press any key")
     tracker_space.calibrateGround()
     print(f"calibration complete, offset generated {mounted_tracker.return_lab_coords()} ")
 
-    return("place tracker on measuring rig and press any key")
+    input("place tracker on measuring rig and press any key")
     print("beginning measurement")
 
     live = BFLive(path=rec_path)

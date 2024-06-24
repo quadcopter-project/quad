@@ -32,6 +32,8 @@ class Frame:
     peak_freq:list = field(default_factory=list) 
     peak_ampl:list = field(default_factory=list) 
 
+    tracker_pos:list = field(default_factory=list)
+
     compact:bool = False    # True: the Frame has been rid of audio.
 
     # return a copy of frame instance without any currently stored audio.
