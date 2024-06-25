@@ -176,12 +176,12 @@ if __name__ == '__main__':
 
     rpm_queue = np.linspace(2000,8000,7).tolist()
 
-    height_queue=np.arange(20,102,2).tolist()
+    height_queue=np.arange(2,95,2).tolist()
     
     rec_t = 30
     transient = 5
     # rec_path = '../raw/bf2/120mm_prop_spacing_4inch_prop'
-    rec_path = 'data/24-06-2024-240mm'
+    rec_path = 'data/25-06-2024-240mm'
 
     tracker_space = viveTracker.TrackerSpace()
     mounted_tracker = tracker_space.trackers[0]
