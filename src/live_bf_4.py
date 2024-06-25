@@ -141,21 +141,30 @@ class BFLive:
             self.plotter.plot(data)
         
         """
+        while True:
+            mounted_tracker.recent_reconnect = False
+            while time.time() - t < rec_t:
+                rpm = self.quad.get_rpm()
+                ct = time.time() - t
+                _,tracker_height,_,_,_,_ = mounted_tracker.return_lab_coords()
+                dict=asdict(self.ardman.get_reading())
+                dict.update({'dist':[tracker_height]})
+                dict['tracker_pos'] = mounted_tracker.return_lab_coords()
 
-        while time.time() - t < rec_t:
-            rpm = self.quad.get_rpm()
-            ct = time.time() - t
-            _,tracker_height,_,_,_,_ = mounted_tracker.return_lab_coords()
-            dict=asdict(self.ardman.get_reading())
-            dict.update({'dist':[tracker_height]})
-            dict['tracker_pos'] = mounted_tracker.return_lab_coords()
+                data.add(t = ct,
+                         rpm = rpm,
+                         **dict
+                         )
+                self.plotter.plot(data)
+            if mounted_tracker.recent_reconnect == False:
+                print("disconnection detected, repeating measurement")
+                data = utils.Data(height = height,
+                        target_rpm = target_rpm,
+                        timestamp = self.timestamp,
+                        platform = self.PLATFORM)
+                break
 
-            data.add(t = ct,
-                     rpm = rpm,
-                     **dict
-                     )
-            self.plotter.plot(data)
-        
+            
 
         print('BFLive::record: dumping raw data.')
         data.dump(file)
@@ -176,12 +185,12 @@ if __name__ == '__main__':
 
     rpm_queue = np.linspace(2000,8000,7).tolist()
 
-    height_queue=np.arange(2,95,2).tolist()
+    height_queue=np.arange(10,40,1).tolist()
     
     rec_t = 30
     transient = 5
     # rec_path = '../raw/bf2/120mm_prop_spacing_4inch_prop'
-    rec_path = 'data/25-06-2024-240mm'
+    rec_path = 'data/26-06-2024-240mm-fixed'
 
     tracker_space = viveTracker.TrackerSpace()
     mounted_tracker = tracker_space.trackers[0]

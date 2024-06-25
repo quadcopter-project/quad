@@ -37,7 +37,8 @@ class ViveTracker:
     # openvr system api object here 
     offset: list = [0,0,0,0,0,0]
     # labframe = euler_pos + offset
-    interface: triad_openvr
+    #interface: triad_openvr
+    recent_reconnect: bool = False
     
     def __init__(self, name:str, interface):
         self.interface = interface
@@ -48,6 +49,7 @@ class ViveTracker:
 
     def check_existance(self):
         while self.interface.devices[self.name].get_pose_euler() == None:
+            self.recent_reconnect = True
             print(f"tracker{self.name} offline, manual intervention required")
             ## pauses whole program might not work well with automated arduino code 
             input("input any key after connection")

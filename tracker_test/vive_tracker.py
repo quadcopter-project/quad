@@ -1,4 +1,3 @@
-import PyQt5
 from triad_openvr import triad_openvr
 import time
 import numpy as np
