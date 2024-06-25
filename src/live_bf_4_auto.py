@@ -141,15 +141,16 @@ class BFLive:
             self.plotter.plot(data)
         
         """
-        while True:
+        retry_count = 0
+        while retry_count <= 3:
             mounted_tracker.recent_reconnect = False
             while time.time() - t < rec_t:
                 rpm = self.quad.get_rpm()
                 ct = time.time() - t
-                _,tracker_height,_,_,_,_ = mounted_tracker.return_lab_coords()
+                _,tracker_height,_,_,_,_ = mounted_tracker.return_lab_coords_no_pause()
                 dict=asdict(self.ardman.get_reading())
                 dict.update({'dist':[tracker_height]})
-                dict['tracker_pos'] = mounted_tracker.return_lab_coords()
+                dict['tracker_pos'] = mounted_tracker.return_lab_coords_no_pause()
 
                 data.add(t = ct,
                          rpm = rpm,
@@ -157,11 +158,13 @@ class BFLive:
                          )
                 self.plotter.plot(data)
             if mounted_tracker.recent_reconnect == True:
-                print("disconnection detected, repeating measurement")
+                print(f"disconnection detected, repeating measurement, has retried {retry_count} times")
+                #clear data through re-declaration
                 data = utils.Data(height = height,
                         target_rpm = target_rpm,
                         timestamp = self.timestamp,
                         platform = self.PLATFORM)
+                retry_count += 1
             else:
                 break
 

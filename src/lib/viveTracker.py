@@ -54,13 +54,20 @@ class ViveTracker:
             ## pauses whole program might not work well with automated arduino code 
             input("input any key after connection")
         return True
-    
+
+    def check_existance_no_pause(self):
+        while self.interface.devices[self.name].get_pose_euler() == None:
+            self.recent_reconnect = True
+            print(f"tracker{self.name} offline, connection state updated")
+            ## pauses whole program might not work well with automated arduino code 
+        return True
     def return_lab_coords(self):
         self.check_existance()
         self.updatepos()
         return list(map(add, self.offset, self.euler_pos))
 
-    def return_lab_coords_no_check(self):
+    def return_lab_coords_no_pause(self):
+        self.check_existance_no_pause()
         self.updatepos()
         return list(map(add, self.offset, self.euler_pos))
 
