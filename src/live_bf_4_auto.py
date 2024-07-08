@@ -73,7 +73,7 @@ class BFLive:
         self.quad.set_arming(False)
 
 
-    def start_with_tracker(self, height_queue: list, rpm_queue: list, rec_t: float, transient:float, mounted_tracker):
+    def start_with_tracker(self, height_queue: list, rpm_queue: list, rec_t: float, transient:float, mounted_tracker, tracker_space):
 
         print('BFLive::start: the following parameters are scheduled for testing.')
         print('height_queue:', *height_queue, sep = ', ')
@@ -104,10 +104,7 @@ class BFLive:
 
         filename = f'bf_{height}_{target_rpm}_{self.t_str}_{self.cnt}.json'
         file = os.path.join(self.path, filename)
-        data = utils.Data(height = height,
-                          target_rpm = target_rpm,
-                          timestamp = self.timestamp,
-                          platform = self.PLATFORM)
+        
 
         #input('Confirm continue: ')
         time.sleep(transient)
@@ -117,16 +114,14 @@ class BFLive:
         time.sleep(5)
         print('BFLive::record: load cells tared.')
 
-        self.quad.set_rpm_worker_on(True)
-        self.quad.set_rpm(target_rpm, block = True, hold_throttle = True)
-        print('BFLive::record: target_rpm range reached, throttle is now fixed.')
-        print(f'BFLive::record: waiting for transient: {transient}s.')
-        time.sleep(transient)
+        #self.quad.set_rpm_worker_on(True)
+        #self.quad.set_rpm(target_rpm, block = True, hold_throttle = True)
+        #print('BFLive::record: target_rpm range reached, throttle is now fixed.')
+        #print(f'BFLive::record: waiting for transient: {transient}s.')
+        #time.sleep(transient)
 
         print(f"Time: {datetime.fromtimestamp(time.time())}")
         print(f'BFLive::record: recording started...')
-        t = time.time()
-
         """
         #This is the old record function that uses the ultrasound height measurements.
         #Would like to replace with camera measurement.
@@ -142,33 +137,47 @@ class BFLive:
         
         """
         retry_count = 0
-        while retry_count <= 3:
+        while retry_count < 3:
+            self.quad.set_rpm_worker_on(True)
+            self.quad.set_rpm(target_rpm, block = True, hold_throttle = True)
+            print('BFLive::record: target_rpm range reached, throttle is now fixed.')
+            print(f'BFLive::record: waiting for transient: {transient}s.')
+            time.sleep(transient)
+
+            tracker_space.calibrateGround()
+            data = utils.Data(height = height,
+                          target_rpm = target_rpm,
+                          timestamp = self.timestamp,
+                          platform = self.PLATFORM)
             mounted_tracker.recent_reconnect = False
+
+            t = time.time()
             while time.time() - t < rec_t:
                 rpm = self.quad.get_rpm()
                 ct = time.time() - t
-                _,tracker_height,_,_,_,_ = mounted_tracker.return_lab_coords_no_pause()
+                tracker_pos = mounted_tracker.return_lab_coords_no_pause()
+                _,tracker_height,_,_,_,_ = tracker_pos
                 dict=asdict(self.ardman.get_reading())
                 dict.update({'dist':[tracker_height]})
-                dict['tracker_pos'] = mounted_tracker.return_lab_coords_no_pause()
+                dict['tracker_pos'] = tracker_pos
 
                 data.add(t = ct,
                          rpm = rpm,
                          **dict
                          )
                 self.plotter.plot(data)
-            if mounted_tracker.recent_reconnect == True:
-                print(f"disconnection detected, repeating measurement, has retried {retry_count} times")
-                #clear data through re-declaration
-                data = utils.Data(height = height,
-                        target_rpm = target_rpm,
-                        timestamp = self.timestamp,
-                        platform = self.PLATFORM)
-                retry_count += 1
-            else:
+            if mounted_tracker.recent_reconnect == False:
                 break
 
-            
+            print(f"BFLive::record: disconnection detected, repeating measurement, has retried {retry_count} times")
+            #clear data through re-declaration
+            retry_count += 1
+            self.quad.set_throttle(0)
+            time.sleep(1)
+            self.quad.set_rpm_worker_on(False)
+
+
+
 
         print('BFLive::record: dumping raw data.')
         data.dump(file)
@@ -176,8 +185,10 @@ class BFLive:
         data2.load(file)
         print(f'BFLive::record: dumped == original: {data2 == data}')
 
-        self.quad.set_rpm_worker_on(False)
+
         self.quad.set_throttle(0)
+        time.sleep(1)
+        self.quad.set_rpm_worker_on(False)
 
 
     def close(self):
@@ -185,31 +196,33 @@ class BFLive:
         self.quad.set_arming(False)
 
 if __name__ == '__main__':
-    # rpm_queue = [2000, 4000] + np.linspace(6000, 12000, 7).tolist()
+    #rpm_queue = [2000, 4000] + np.linspace(6000, 12000, 7).tolist()
 
-    rpm_queue = np.linspace(2000,8000,7).tolist()
+    rpm_queue = np.linspace(2000,10000,5).tolist()
 
-    height_queue=np.arange(10,40,1).tolist()
+    height_queue=np.arange(36,105,2).tolist()
     
     rec_t = 30
     transient = 5
     # rec_path = '../raw/bf2/120mm_prop_spacing_4inch_prop'
-    rec_path = 'data/26-06-2024-240mm-fixed'
+    rec_path = 'data/smallframe/08-07-2024-5-105cm-sparse'
 
     tracker_space = viveTracker.TrackerSpace()
-    mounted_tracker = tracker_space.trackers[0]
+    mounted_tracker = max(tracker_space.trackers, key=lambda obj: obj.euler_pos[1])
+    print(f"BFLive::main: tracker {mounted_tracker} detected as mounted tracker")
+    
 
     input("place tracker on calibration mount and press any key")
     tracker_space.calibrateGround()
-    print(f"calibration complete, offset generated {mounted_tracker.return_lab_coords()} ")
+    print(f"calibration complete, current drone propeller height {mounted_tracker.return_lab_coords()} ")
 
     input("place tracker on measuring rig and press any key")
-    print("beginning measurement")
+    print("calibration complete")
 
     live = BFLive(path=rec_path)
     live.start_with_tracker(height_queue = height_queue,
                rpm_queue = rpm_queue,
                rec_t = rec_t,
-               transient = transient, mounted_tracker = mounted_tracker)
+               transient = transient, mounted_tracker = mounted_tracker, tracker_space = tracker_space)
 
 
