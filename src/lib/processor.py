@@ -18,6 +18,7 @@ from matplotlib import cm
 from utils import Data
 from math import sqrt
 from numbers import Number
+import re
 
 
 """
@@ -151,6 +152,39 @@ def get_data_files(paths: str|list) -> list:
                 )
     return data_files
 
+def get_data_files_newest(paths: str|list) -> list:
+    data_files = list() 
+    if type(paths) is str:
+        paths = [paths]
+
+    for path in paths:
+        data_files.extend(
+                [os.path.join(path, name) 
+                for name in os.listdir(path) 
+                if os.path.isfile(os.path.join(path, name))
+                and name.split('.')[-1] == 'json']
+                )
+
+    # removing older version of files 
+    # regex pattern here note version number 
+    # can be optimized with previous loading process into one loop but my brain is off 
+    pattern = re.compile(r'(.+)_(\d+)\.json$')
+    # a dictionary for lookup of each file and version number 
+    latest_versions = {}
+
+    for path in data_files:
+        match = pattern.match(path)
+        
+        base_name, version_str = match.groups()
+        version = int(version_str)
+
+        if base_name not in latest_versions or version > latest_versions[base_name][1]:
+            latest_versions[base_name] = (path, version)
+
+    return [path for path, _ in latest_versions.values()]
+
+    
+
 # return a list of Data objects loaded from json files in {paths}.
 def get_data_list(paths: str|list) -> list:
     data_list = list()
@@ -161,6 +195,18 @@ def get_data_list(paths: str|list) -> list:
         data_list.append(data)
 
     return data_list
+
+
+def get_data_list_newest(paths: str|list) -> list:
+    data_list = list()
+    data_files = get_data_files_newest(paths)
+    for name in data_files:
+        data = Data()
+        data.load(name)
+        data_list.append(data)
+
+    return data_list
+
 """
 SNAPTAIN processing functions 
 """
@@ -892,8 +938,8 @@ def extractor(data_lists: list,avg:bool = False,**kwargs):
                 # more can be added
                 multi_data.append([x[j],y[j],height,prop_spacings[i],prop_radii[i],test_run[i]])
 
-    ###filename = '../raw/bf2/all_data.csv'
-    filename = 'C:/Users/zc345-elev/Documents/quad/src/temp/all_data.csv'
+    filename = '../raw/bf2/all_data.csv'
+    # filename = 'C:/Users/zc345-elev/Documents/quad/src/temp/all_data.csv'
 
 
 
