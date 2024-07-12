@@ -16,10 +16,11 @@ import numpy as np
 import statistics as st
 from matplotlib import cm
 from utils import Data
+from lib import plotter
 from math import sqrt
 from numbers import Number
 import re
-
+import shutil
 
 """
 GENERIC processing functions
@@ -138,6 +139,7 @@ def in_range(val: float, l: float = None, r: float = None) -> bool:
 # get a list of the paths to all the valid files (json) in a folder
 # paths: the folder(s) to look at, non-recursive.
 # return -> list of paths to valid files.
+'''
 def get_data_files(paths: str|list) -> list:
     data_files = list() 
     if type(paths) is str:
@@ -151,7 +153,9 @@ def get_data_files(paths: str|list) -> list:
                 and name.split('.')[-1] == 'json']
                 )
     return data_files
+'''
 
+# replacing with best data
 def get_data_files_newest(paths: str|list) -> list:
     data_files = list() 
     if type(paths) is str:
@@ -185,7 +189,34 @@ def get_data_files_newest(paths: str|list) -> list:
 
     
 
+# preview the quality of data 
+# takes in data file variable display data in preview 
+# manual tool to get rid of unusable Data
+# to maintain functionality of legacy code, files are moved to new directory.
+def preview_data(data_files: str|list, new_dir: str):
+    PLATFORM: str = 'betaflight-2'
+    PLOT_LAYOUT: dict = {(0, 0): 'mean_rpm',
+                         (0, 1): 'total_mass',
+                         (1, 0): 'dist',
+                         (1, 1): 'accel_comp'}
+    PLOT_NROWS: int = 2
+    PLOT_NCOLS: int = 2
+    plotteri = plotter.Plotter(PLOT_NROWS, PLOT_NCOLS, PLOT_LAYOUT)
+    for name in data_files:
+        data = Data()
+        data.load(name)
+        plotteri.plot(data)
+        print(name)
+        if_drop = input()
+        if if_drop == "y":
+            print(f"dropping file {name}")
+        else:
+            print(f"copying file to new dir")
+            shutil.copy(name, new_dir)
+
+
 # return a list of Data objects loaded from json files in {paths}.
+'''
 def get_data_list(paths: str|list) -> list:
     data_list = list()
     data_files = get_data_files(paths)
@@ -195,9 +226,9 @@ def get_data_list(paths: str|list) -> list:
         data_list.append(data)
 
     return data_list
+'''
 
-
-def get_data_list_newest(paths: str|list) -> list:
+def get_data_list(paths: str|list) -> list:
     data_list = list()
     data_files = get_data_files_newest(paths)
     for name in data_files:
@@ -392,6 +423,111 @@ def bin_by_w_plot(data_list: list, endpoints: list, fig: str = None):
 
     plt.clf()
 
+
+"""
+ViveTracker processing functions
+"""
+# due to reassignment of height value during the experiment, 
+# load single data from name, modify data.height value and return loaded data object for further append use
+# frams are loaded for each data file, get height with removal of outlier
+def load_with_height_reassignment(name: str):
+    #create Data object 
+    data = Data()
+    data.load(name)
+    frames = data.frames
+    dists = [frame.get_dist() for frame in frames]
+    remove_outliers([dists], percentile_limit = 0.2)
+    #get mean height 
+    data.height = st.mean(dists)*100
+    return data
+
+# individual loading does not work as analysis function regard same height number as on set of experiment
+# input data_files output data_list but with adjusted height 
+def get_data_list_with_height_reassignment(data_files:str|list) -> list:
+    # initialize the data list variable 
+    data_list = list()
+
+    # dynamic referenece dictionary that stores Data object with lookup index of original height 
+    height_lookup_dict = {}
+    pattern = r'/bf_(\d+)_.*\.json'
+
+    # separate object into dictionary of names by file name 
+    for name in data_files:
+        match = re.search(pattern, name)
+        height_goal = match.group(1)
+        if height_goal not in height_lookup_dict:
+            height_lookup_dict[height_goal] = []
+        height_lookup_dict[height_goal].append(name)
+
+    # for each entry of the dictionary, obtain sublist
+    height_goals = height_lookup_dict.keys()
+    # time to nest
+    for height_goal in height_goals:
+        instance_heights = []
+        for name in height_lookup_dict[height_goal]:
+            data = Data()
+            data.load(name)
+            frames = data.frames
+            dists = [frame.get_dist() for frame in frames]
+            remove_outliers([dists], percentile_limit = 0.2)
+            instance_heights.append(st.mean(dists))
+        # find mean of height for the same set of experiment 
+        height_real = st.mean(instance_heights)
+        for name in height_lookup_dict[height_goal]:
+            # reopen the Data object again 
+            data = Data()
+            data.load(name)
+            # Important: converting from meter to cm, will be changed later
+            data.height = height_real*100
+            data_list.append(data)
+    
+    return data_list
+
+# a function that loads up files with tracker data, then 
+def process_and_dump_with_height_adj(path_in:str, path_out:str):
+    data_files = get_data_files_newest(path_in)
+
+    height_lookup_dict = {}
+    pattern = r'/bf_(\d+(?:\.\d+)?)_.*\.json'
+
+    # separate object into dictionary of names by file name 
+    for name in data_files:
+        match = re.search(pattern, name)
+        if match:
+            height_goal = match.group(1)
+            if height_goal not in height_lookup_dict:
+                height_lookup_dict[height_goal] = []
+            height_lookup_dict[height_goal].append(name)
+
+    # for each entry of the dictionary, obtain sublist
+    height_goals = height_lookup_dict.keys()
+    # time to nest
+    for height_goal in height_goals:
+        instance_heights = []
+        for name in height_lookup_dict[height_goal]:
+            data = Data()
+            data.load(name)
+            frames = data.frames
+            dists = [frame.get_dist() for frame in frames]
+            remove_outliers([dists], percentile_limit = 0.2)
+            instance_heights.append(st.mean(dists))
+        # find mean of height for the same set of experiment 
+        height_real = st.mean(instance_heights)
+        for name in height_lookup_dict[height_goal]:
+            # reopen the Data object again 
+            data = Data()
+            data.load(name)
+            # Important: converting from meter to cm, will be changed later
+            data.height = height_real*100
+            # reconstructing file name from path 
+            filename = os.path.basename(name)
+            new_file_path = os.path.join(path_out, filename)
+            data.dump(new_file_path)
+
+
+
+
+
 """
 BETAFLIGHT processing functions
 """
@@ -518,7 +654,7 @@ def lift_rpm2_plot(data_list: list, avg: bool = True, fig: str = None, **kwargs)
 
     #axs[0].set_xlabel('rpm^2 / min^-2')
     axs[0].set_ylabel('lift / g',fontsize=16)
-    axs[0].legend(ncol = 4, loc = 'upper left', fontsize = 5,prop={'size':16})
+    #axs[0].legend(ncol = 4, loc = 'upper left', fontsize = 5,prop={'size':16})
     axs[0].set_title(r'Lift against rpm$^2$',fontsize=16)
     
     axs[1].set_xlabel(r'rpm$^2$ / min$^{-2}$',fontsize=16)
