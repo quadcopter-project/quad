@@ -186,7 +186,7 @@ if __name__ == '__main__':
 
     rpm_queue = np.linspace(2000,8000,7).tolist()
 
-    height_queue=np.arange(10,40,1).tolist()
+    height_queue=np.arange(80,90,1).tolist()
     
     rec_t = 30
     transient = 5

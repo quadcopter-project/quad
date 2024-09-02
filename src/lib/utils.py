@@ -101,6 +101,7 @@ class Data:
     target_rpm: list = None
     timestamp: float = None
     platform: str = None    # 'snaptain' or 'betaflight' or 'betaflight-2'
+    audiofile: str = None
     description: str = None
     compact: bool = False
     frames: list = field(default_factory=list)

@@ -16,7 +16,7 @@ def send_message_and_quit(url, message):
     except Exception as e:
         print(f"An error occurred: {e}")
 # Usage
-websocket_url = "ws://localhost:9000"
-message = "RecordNow 10,./test.wav"
-
-send_message_and_quit(websocket_url, message)
+#websocket_url = "ws://localhost:9000"
+#message = "RecordNow 10,./test.wav"
+#
+#send_message_and_quit(websocket_url, message)

@@ -90,13 +90,13 @@ class BFLive:
             print(f"BFLive::start: Height set to {height}cm.")
             for rpm in rpm_queue:
                 self.record(height, rpm, rec_t, transient)
-
         self.quad.set_rpm_worker_on(False)
+
         self.quad.set_arming(False)
 
-    def start_with_audio_server(self, height_queue: list, rpm_queue_single: list, rec_t: float, transient:float):
+    def start_with_audio_server(self, height_queue: list, rpm_queue: list, rec_t: float, transient:float, mounted_tracker, tracker_space):
         print('BFLive::start: the following parameters are scheduled for testing.')
-        print('rpm_queue:', *rpm_queue_single, sep = '\n- ')
+        print('rpm_queue:', *rpm_queue, sep = '\n- ')
         input('BFLive::start: confirm: ')
 
         self.quad.set_arming(True)
@@ -106,8 +106,8 @@ class BFLive:
             print(f"\nBFLive::start: Setting height to {height}cm...")
             live.set_height(height)
             print(f"BFLive::start: Height set to {height}cm.")
-            for rpm_single in rpm_queue_single:
-                self.record_single(height, rpm_single, rec_t, transient)
+            for rpm in rpm_queue:
+                self.record(height, rpm, rec_t, transient)
 
         self.quad.set_rpm_worker_on(False)
         self.quad.set_arming(False)
@@ -122,13 +122,16 @@ class BFLive:
             target_rpm = [target_rpm] * self.quad.NUM_OF_MOTORS
 
         filename = f'bf_{height}_{target_rpm}_{self.t_str}_{self.cnt}.json'
-        filename_audio = f'bf_{height}_{target_rpm}_{self.t_str}_{self.cnt}.wav'
+        rpm_str = '_'.join(map(str, target_rpm))
+        filename_audio = f'bf_{height}_{rpm_str}_{self.t_str}_{self.cnt}.wav'
 
         self.audio_path = os.path.join(self.path, 'audio')
-        os.mkdir(self.audio_path)
+        if not os.path.exists(self.audio_path):
+            os.mkdir(self.audio_path)
 
         file = os.path.join(self.path, filename)
         file_audio = os.path.join(self.audio_path, filename_audio)
+        print(file_audio)
         
 
         #input('Confirm continue: ')
@@ -167,9 +170,8 @@ class BFLive:
             self.quad.set_rpm(target_rpm, block = True, hold_throttle = True)
             print('BFLive::record: target_rpm range reached, throttle is now fixed.')
             print(f'BFLive::record: waiting for transient: {transient}s.')
-            audio_command = f"RecordNow {rec_t+transient},{self.audio_path}"
+            audio_command = f"RecordNow {rec_t+transient},{file_audio}"
             ws_url = "ws://localhost:9000"
-            audioClient.send_message_and_quit(ws_url, audio_command)
             time.sleep(transient)
 
             tracker_space.calibrateGround()
@@ -177,7 +179,7 @@ class BFLive:
                           target_rpm = target_rpm,
                           timestamp = self.timestamp,
                           platform = self.PLATFORM,
-                              audiofile=self.audio_path)
+                              audiofile=file_audio)
 
             mounted_tracker.recent_reconnect = False
 
@@ -185,6 +187,7 @@ class BFLive:
             # constructing command 
 
             t = time.time()
+            audioClient.send_message_and_quit(ws_url, audio_command)
             while time.time() - t < rec_t:
                 rpm = self.quad.get_rpm()
                 ct = time.time() - t
@@ -245,18 +248,19 @@ def create_combined_array(list_a):
 if __name__ == '__main__':
     #rpm_queue = [2000, 4000] + np.linspace(6000, 12000, 7).tolist()
 
-    rpm_queue = np.linspace(2000,12000,11).tolist()
+    rpm_queue = np.linspace(2000,12000,22).tolist()
     rpm_queue_single = create_combined_array(rpm_queue)
     rpm_queue_single.extend(rpm_queue)
 
 
 
-    height_queue=np.arange(10,105,30).tolist()
+    #height_queue=np.arange(5,105,30).tolist()
+    height_queue=[30]
     
     rec_t = 30
     transient = 5
     # rec_path = '../raw/bf2/120mm_prop_spacing_4inch_prop'
-    rec_path = 'data/smallframe/08-07-2024-5-105cm-sparse'
+    rec_path = 'data/rpm_calibration/mid/02-08-2024-audio'
 
     tracker_space = viveTracker.TrackerSpace()
     mounted_tracker = max(tracker_space.trackers, key=lambda obj: obj.euler_pos[1])
@@ -271,8 +275,8 @@ if __name__ == '__main__':
     print("calibration complete")
 
     live = BFLive(path=rec_path)
-    live.start_with_tracker(height_queue = height_queue,
-               rpm_queue = rpm_queue,
+    live.start_with_audio_server(height_queue = height_queue,
+               rpm_queue = rpm_queue_single,
                rec_t = rec_t,
                transient = transient, mounted_tracker = mounted_tracker, tracker_space = tracker_space)
 

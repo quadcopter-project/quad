@@ -10,7 +10,7 @@ from operator import add
 
 class TrackerSpace:
     # unit in mm 
-    tracker_mount_propeller_dist = 0.125
+    tracker_mount_propeller_dist = 0.145
     trackers = [] # number index and object 
     # find number of available trackers 
     def __init__(self):
@@ -22,7 +22,13 @@ class TrackerSpace:
     # generate offset values and pass it to all trackers in space 
         height_list = []
         for tracker in self.trackers:
-            _, h, _, _, _, _ = self.interface.devices[tracker.name].get_pose_euler()
+            position = None
+            while position == None:
+                time.sleep(1)
+                print("ViveTracker::TrackerSpace: waiting for ground calibration")
+                position = self.interface.devices[tracker.name].get_pose_euler()
+                
+            _, h, _, _, _, _ = position
             height_list.append(h)
         # generate offset 
         h_offset = -min(height_list)-self.tracker_mount_propeller_dist
@@ -45,22 +51,22 @@ class ViveTracker:
         self.name = name
 
     def updatepos(self):
-        self.euler_pos = self.interface.devices[self.name].get_pose_euler()
+        buffer = self.interface.devices[self.name].get_pose_euler()
+        if buffer != None:
+            self.euler_pos = buffer
+            
 
     def check_existance(self):
         while self.interface.devices[self.name].get_pose_euler() == None:
             self.recent_reconnect = True
-            print(f"tracker{self.name} offline, manual intervention required")
+            print(f"ViveTracker::ViveTracker: tracker{self.name} offline, manual intervention required")
             ## pauses whole program might not work well with automated arduino code 
             input("input any key after connection")
         return True
 
     def check_existance_no_pause(self):
-        while self.interface.devices[self.name].get_pose_euler() == None:
+        if self.interface.devices[self.name].get_pose_euler() == None:
             self.recent_reconnect = True
-            print(f"tracker{self.name} offline, connection state updated")
-            ## pauses whole program might not work well with automated arduino code 
-        return True
     def return_lab_coords(self):
         self.check_existance()
         self.updatepos()
