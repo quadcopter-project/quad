@@ -138,13 +138,13 @@ class BFLive:
         """
         retry_count = 0
         while retry_count < 3:
+            tracker_space.calibrateGround()
             self.quad.set_rpm_worker_on(True)
             self.quad.set_rpm(target_rpm, block = True, hold_throttle = True)
             print('BFLive::record: target_rpm range reached, throttle is now fixed.')
             print(f'BFLive::record: waiting for transient: {transient}s.')
             time.sleep(transient)
 
-            tracker_space.calibrateGround()
             data = utils.Data(height = height,
                           target_rpm = target_rpm,
                           timestamp = self.timestamp,
@@ -198,14 +198,14 @@ class BFLive:
 if __name__ == '__main__':
     #rpm_queue = [2000, 4000] + np.linspace(6000, 12000, 7).tolist()
 
-    rpm_queue = np.linspace(2000,10000,5).tolist()
+    rpm_queue = np.linspace(2000,12000,6).tolist()
 
-    height_queue=np.arange(36,105,2).tolist()
+    height_queue=np.arange(5.5,5,-0.5).tolist()
     
     rec_t = 30
     transient = 5
     # rec_path = '../raw/bf2/120mm_prop_spacing_4inch_prop'
-    rec_path = 'data/smallframe/08-07-2024-5-105cm-sparse'
+    rec_path = 'data/midframe/25-07-2024-100-5cm/'
 
     tracker_space = viveTracker.TrackerSpace()
     mounted_tracker = max(tracker_space.trackers, key=lambda obj: obj.euler_pos[1])
