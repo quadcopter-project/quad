@@ -104,6 +104,7 @@ class Data:
     audiofile: str = None
     description: str = None
     compact: bool = False
+    audiofile: str = None
     frames: list = field(default_factory=list)
     
     # add a frame of data.
