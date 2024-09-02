@@ -21,6 +21,10 @@ class ArdReading:
     dist: list = field(default_factory = list)
     mass: list = field(default_factory = list)
     motor: list = field(default_factory = list)
+    rpm1: list = field(default_factory = list)
+    rpm2: list = field(default_factory = list)
+    rpm3: list = field(default_factory = list)
+    rpm4: list = field(default_factory = list)
     # a pseudo-list. Arduino will only ever return list of one value indictaing its state.
     # However, this helps keep the code free of special cases
     operating: list = field(default_factory = list)
@@ -44,6 +48,10 @@ class ArdManager:
         dist: list = field(default_factory = list)
         mass: list = field(default_factory = list)   # motor id -> (dev_id, #motor_output)
         motor: list = field(default_factory = list)
+        rpm1: list = field(default_factory = list)
+        rpm2: list = field(default_factory = list)
+        rpm3: list = field(default_factory = list)
+        rpm4: list = field(default_factory = list)
         operating: list = field(default_factory = list)
 
         def dump(self, name):

@@ -103,6 +103,7 @@ class Data:
     platform: str = None    # 'snaptain' or 'betaflight' or 'betaflight-2'
     description: str = None
     compact: bool = False
+    audiofile: str = None
     frames: list = field(default_factory=list)
     
     # add a frame of data.
