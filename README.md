@@ -45,6 +45,24 @@ xhost +local:docker
 
 To start using the docker environment, ensure docker daemon is started then run docker_start.sh to go into interactive shell.
 
+### OpenVr and SteamVR setup
+
+
+
+Due to some version incompatibilities, SteamVR will only launch successfully with environment variable changed:
+```bash
+QT_QPA_PLATFORM=xcb steam
+```
+After installation, disable requirements for head mounted display to use trackers only. 
+
+Change file ~/.steam/steam/steamapps/common/SteamVR/resources/settings/default.vrsettings
+
+Look for line 
+```
+"requireHmd" : true,
+```
+and set for false.
+
 ## Use
 
 For usage of the code, the user is referred to the `README` files in the
