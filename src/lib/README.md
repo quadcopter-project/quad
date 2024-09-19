@@ -65,6 +65,18 @@ The key control methods are `Drone.set_arming`, `Drone.set_rpm_worker_on`
 `Drone.set_rpm`. D-Shot RPM data is obtained with `Drone.get_rpm`. For an
 example workflow, see the test functions at the end of `drone.py`.
 
+## ViveTracker (`viveTracker.ViveTracker`, `viveTracker.TrackerSpace`)
+
+The `ViveTracker` class uses API provided by `triad_openvr` to create an object storing the properties of a vive Tracking device. `TrackerSpace` scans all connected trackers and create corresponding `ViveTracker` objects upon initialization. 
+
+In the current experiment setup, two trackers are used and one of the tracker is placed on the ground as reference for zero height. Running `TrackerSpace.calibrateGround()` will update offset parameter for all `ViveTracker` object, ensuring the lowest tracker have a combined height of zero. 
+
+As the trackers relies on both inertial estimation and laser sheet tracking, huge vibration from high rpm will cause the software to lose tracking. Once tracking is lost, the `ViveTracker` object returns height of its last recorded height. At the same time, a `ViveTracker.recent_reconnect` flag is changed to True. This can be used and reset for repeating measurements. 
+
+## Audio Server & Client (`AudioServer.AudioServer`, `AudioClient`)
+
+An implementation of continuous audio recording method that runs in parallel to all other script. Running `AudioServer` in main on another thread will initiate the server. The server constantly listen to localhost port 9000 and wait for commands. `AudioClient` is able to configure command and send to corresponding port. The program is not asynchronous and cannot respond once recording is in progress, thus the command contains the duration of the recording. Once the recording is finished, a .wav file is stored with file name specified in the initial command given.
+
 ## Audio (`utils.Recorder`)
 
 The `Recorder` class is really just a wrapper around PyAudio. It comes with a
